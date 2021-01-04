@@ -9,7 +9,7 @@ Clumsy Crafting
 
 구성
 ---
-* [Clumsy Mining](Clumsy Mining.md)
+* [Clumsy Mining](url=Clumsy Mining.md)
 
 
 Environment
