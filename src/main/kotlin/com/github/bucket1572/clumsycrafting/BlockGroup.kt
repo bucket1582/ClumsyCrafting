@@ -37,7 +37,9 @@ fun getBlockGroup(material: Material?) : BlockGroup =
             Material.ANDESITE, Material.POLISHED_ANDESITE, Material.BASALT, Material.POLISHED_BASALT,
             Material.END_STONE, Material.BLACKSTONE, Material.POLISHED_BLACKSTONE,
             Material.GILDED_BLACKSTONE, Material.OBSIDIAN, Material.CRYING_OBSIDIAN,
-            Material.PRISMARINE -> BlockGroup.STONE
+            Material.PRISMARINE, Material.SANDSTONE, Material.RED_SANDSTONE,
+            Material.CUT_RED_SANDSTONE, Material.CUT_SANDSTONE, Material.NETHERRACK,
+            Material.SMOOTH_STONE, Material.MAGMA_BLOCK -> BlockGroup.STONE
 
             Material.EMERALD_ORE, Material.REDSTONE_ORE, Material.DIAMOND_ORE, Material.LAPIS_ORE,
             Material.NETHER_GOLD_ORE, Material.COAL_ORE, Material.IRON_ORE, Material.GOLD_ORE,
