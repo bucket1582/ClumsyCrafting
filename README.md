@@ -9,7 +9,7 @@ Clumsy Crafting
 
 구성
 ---
-* [Clumsy Mining](https://github.com/Bucket1572/ClumsyCrafting/blob/master/Clumsy%20Mining.md)
+* [Clumsy Mining](Clumsy%20Mining.md)
 
 
 Environment
