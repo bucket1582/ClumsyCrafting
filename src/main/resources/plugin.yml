@@ -1,5 +1,9 @@
-name: $pluginName
+name: ClumsyCrafting
 main: $pluginMain
 depend: [ Kotlin, ProtocolLib ]
 api-version: '1.16'
 version: $version
+commands:
+  clumsy:
+    description: Adapted more complexed crafting methods in minecraft.
+    usage: /clumsy
