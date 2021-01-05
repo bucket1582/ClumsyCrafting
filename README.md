@@ -9,7 +9,8 @@ Clumsy Crafting
 
 구성
 ---
-* [Clumsy Mining](Clumsy Mining.md)
+* [Clumsy Mining](Clumsy%20Mining.md)
+* [Clumsy Smelting](Clumsy%20Smelting.md)
 
 
 Environment
