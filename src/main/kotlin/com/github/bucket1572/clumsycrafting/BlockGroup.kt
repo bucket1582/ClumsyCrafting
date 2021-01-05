@@ -17,7 +17,7 @@ enum class BlockGroup {
 
 fun getBlockGroup(material: Material?) : BlockGroup =
         /*
-        Material에 해당하는 블록 그룹을 반환
+        Material 에 해당하는 블록 그룹을 반환
          */
         when(material) {
             Material.ACACIA_WOOD, Material.BIRCH_WOOD, Material.DARK_OAK_WOOD,
