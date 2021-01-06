@@ -12,6 +12,7 @@ enum class BlockGroup {
     CONCRETE,
     ORE,
     CROP, // 식료품으로 가공될 수 있는 식물 중 사탕수수, 해조류를 제외한 모든 식물과 fungus
+    ANVIL, // 모든 종류의 모루
     ELSE
 }
 
@@ -69,6 +70,8 @@ fun getBlockGroup(material: Material?) : BlockGroup =
             Material.BROWN_MUSHROOM, Material.RED_MUSHROOM, Material.CRIMSON_FUNGUS,
             Material.WARPED_FUNGUS, Material.SWEET_BERRY_BUSH, Material.POTATOES,
             Material.CARROTS, Material.BEETROOTS -> BlockGroup.CROP
+
+            Material.ANVIL, Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL -> BlockGroup.ANVIL
 
             else -> BlockGroup.ELSE
         }

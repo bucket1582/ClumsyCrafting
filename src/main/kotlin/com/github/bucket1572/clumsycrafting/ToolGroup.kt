@@ -32,7 +32,7 @@ fun getToolGroup(material: Material?): ToolGroup =
             else -> ToolGroup.ELSE
         }
 
-fun countIron(matrix: Array<ItemStack?>) : Map<String, Int> {
+fun countIron(matrix: Array<ItemStack?>): Map<String, Int> {
     /*
     조합에 사용된 철의 개수와 철의 종류에 따른 개수를 모두 반환합니다.
     return : Map
@@ -49,39 +49,9 @@ fun countIron(matrix: Array<ItemStack?>) : Map<String, Int> {
     var finePigIronCount = 0
     var poorCastIronCount = 0
     var fineCastIronCount = 0
-    var poorSteelCount = 0
-    var fineSteelCount = 0
+    var steelCount = 0
     var bestSteelCount = 0
 
-    val poorSteel = ItemStack(Material.IRON_INGOT)
-    poorSteel.apply {
-        val meta = itemMeta
-        meta.setDisplayName(GlobalObject.steelName)
-        meta.lore = listOf(
-                GlobalObject.rank(2, 2)
-        )
-        itemMeta = meta
-    }
-
-    val fineSteel = ItemStack(Material.IRON_INGOT)
-    fineSteel.apply {
-        val meta = itemMeta
-        meta.setDisplayName(GlobalObject.steelName)
-        meta.lore = listOf(
-                GlobalObject.rank(1, 2)
-        )
-        itemMeta = meta
-    }
-
-    val bestSteel = ItemStack(Material.IRON_INGOT)
-    bestSteel.apply {
-        val meta = itemMeta
-        meta.setDisplayName(GlobalObject.steelName)
-        meta.lore = listOf(
-                GlobalObject.rank(0, 2)
-        )
-        itemMeta = meta
-    }
     matrix.forEach {
         if (it?.type == Material.IRON_INGOT) {
             ironCount++
@@ -98,13 +68,10 @@ fun countIron(matrix: Array<ItemStack?>) : Map<String, Int> {
         if (GlobalObject.isSame(it, GlobalObject.fineCastIron)) {
             fineCastIronCount++
         }
-        if (GlobalObject.isSame(it, poorSteel)) {
-            poorSteelCount++
+        if (GlobalObject.isFundamentallySame(it, GlobalObject.poorSteel)) {
+            steelCount++
         }
-        if (GlobalObject.isSame(it, fineSteel)) {
-            fineSteelCount++
-        }
-        if (GlobalObject.isSame(it, bestSteel)) {
+        if (GlobalObject.isSame(it, GlobalObject.bestSteel)) {
             bestSteelCount++
         }
     }
@@ -114,8 +81,22 @@ fun countIron(matrix: Array<ItemStack?>) : Map<String, Int> {
             "PoorCastIron" to poorCastIronCount,
             "FinePigIron" to finePigIronCount,
             "FineCastIron" to fineCastIronCount,
-            "PoorSteel" to poorSteelCount,
-            "FineSteel" to fineSteelCount,
+            "Steel" to steelCount,
             "BestSteel" to bestSteelCount
     )
 }
+
+fun isSteelTool(tool: ItemStack): Boolean = // 강철 태그가 붙었는지 여부
+        tool.itemMeta.lore?.let {
+            it.contains(GlobalObject.containsSteel) or
+                    it.contains(GlobalObject.allSteel) or
+                    it.contains(GlobalObject.containsBestSteel) or
+                    it.contains(GlobalObject.allBestSteel)
+        } ?: false
+
+fun isPerfectSteelTool(tool: ItemStack): Boolean = // 노란색 강철 태그 이상
+        tool.itemMeta.lore?.let {
+            it.contains(GlobalObject.allSteel) or
+                    it.contains(GlobalObject.containsBestSteel) or
+                    it.contains(GlobalObject.allBestSteel)
+        } ?: false

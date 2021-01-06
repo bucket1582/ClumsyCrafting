@@ -5,12 +5,15 @@ Clumsy Crafting
 개요
 --
 마인크래프트에 조금 더 복잡한 설정을 추가하였습니다.
-조합을 하는 사람이 기술이 서툴다는 컨셉을 잡았습니다.
+이제 여러분은 익숙해진 마인크래프트에 서툴게 될 것입니다.
 
 구성
 ---
-* [Clumsy Mining](Clumsy%20Mining.md)
-* [Clumsy Smelting](Clumsy%20Smelting.md)
+* [아이템 설명 구조](ItemDescriptionStructure.md)
+* [아이템의 품질](Quality.md)
+* [적절한 도구의 사용](ClumsyMining.md)
+* [제련과 제강](Smelting.md)
+* [단조와 강화](ForgingAndReinforcing.md)
 
 
 Environment
