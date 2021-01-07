@@ -9,6 +9,9 @@ enum class ToolGroup {
     HOE,
     SWORD,
     SHOVEL,
+    RANGED,
+    FISHING_ROD,
+    BUCKET,
     ELSE
 }
 
@@ -29,8 +32,16 @@ fun getToolGroup(material: Material?): ToolGroup =
             Material.IRON_SHOVEL, Material.DIAMOND_SHOVEL, Material.GOLDEN_SHOVEL,
             Material.NETHERITE_SHOVEL, Material.STONE_SHOVEL, Material.WOODEN_SHOVEL -> ToolGroup.SHOVEL
 
+            Material.BOW, Material.CROSSBOW -> ToolGroup.RANGED
+
+            Material.FISHING_ROD, Material.CARROT_ON_A_STICK, Material.WARPED_FUNGUS_ON_A_STICK -> ToolGroup.FISHING_ROD
+
+            Material.BUCKET, Material.COD_BUCKET, Material.LAVA_BUCKET,
+            Material.PUFFERFISH_BUCKET, Material.SALMON_BUCKET, Material.TROPICAL_FISH_BUCKET,
+            Material.WATER_BUCKET -> ToolGroup.BUCKET
+
             else -> ToolGroup.ELSE
-        }
+        } // 도구 그룹을 읽어 오는 함수
 
 fun countIron(matrix: Array<ItemStack?>): Map<String, Int> {
     /*
@@ -41,8 +52,8 @@ fun countIron(matrix: Array<ItemStack?>): Map<String, Int> {
     PoorCastIron -> 질 나쁜 주철 개수
     FinePigIron -> 질 좋은 선철 개수
     FineCastIron -> 질 좋은 선철 개수
-    PoorSteel -> 질 나쁜 강철 개수
-    FineSteel -> 질 좋은 강철 개수
+    Steel -> 강철 개수
+    BestSteel -> 강철+ 개수
      */
     var ironCount = 0
     var poorPigIronCount = 0
@@ -84,19 +95,4 @@ fun countIron(matrix: Array<ItemStack?>): Map<String, Int> {
             "Steel" to steelCount,
             "BestSteel" to bestSteelCount
     )
-}
-
-fun isSteelTool(tool: ItemStack): Boolean = // 강철 태그가 붙었는지 여부
-        tool.itemMeta.lore?.let {
-            it.contains(GlobalObject.containsSteel) or
-                    it.contains(GlobalObject.allSteel) or
-                    it.contains(GlobalObject.containsBestSteel) or
-                    it.contains(GlobalObject.allBestSteel)
-        } ?: false
-
-fun isPerfectSteelTool(tool: ItemStack): Boolean = // 노란색 강철 태그 이상
-        tool.itemMeta.lore?.let {
-            it.contains(GlobalObject.allSteel) or
-                    it.contains(GlobalObject.containsBestSteel) or
-                    it.contains(GlobalObject.allBestSteel)
-        } ?: false
+} // 철, 강철 등의 개수를 세는 함수

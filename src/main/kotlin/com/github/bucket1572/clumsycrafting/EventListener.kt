@@ -7,14 +7,15 @@ import org.bukkit.block.Block
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.block.BlockBreakEvent
-import org.bukkit.event.block.BlockDamageEvent
+import org.bukkit.event.block.*
 import org.bukkit.event.entity.EntityChangeBlockEvent
+import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.inventory.CraftItemEvent
 import org.bukkit.event.inventory.FurnaceExtractEvent
 import org.bukkit.event.inventory.PrepareItemCraftEvent
 import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.plugin.java.JavaPlugin
@@ -30,14 +31,260 @@ class EventListener : Listener {
     var plugin: JavaPlugin? = null
     private val enabledBlocks = ArrayList<Block>()
 
+    private fun writeMarker(location: Location, realQuality: Double, maxQuality: Int) {
+        val markerLocation: Location = location.let {
+            Location(it.world, it.x + 0.5, it.y + 1.2, it.z + 0.5)
+        } // 마커 위치
+        val world = location.world
+        // 상호작용 가능한 블록이거나 업그레이드에 사용되는 블록일 경우, 품질을 표시(기억)한다.
+        world.spawn(markerLocation, ArmorStand::class.java).apply {
+            // 이름 (퀄리티)
+            customName = rank(maxQuality - realQuality * maxQuality, maxQuality)
+
+            // 기본 세팅
+            isVisible = false // 안 보임.
+            isMarker = true // 마커임.
+            isCollidable = false // 충돌 불가
+            isCustomNameVisible = true // 이름은 보임.
+            isInvulnerable = true // 때릴 수 없음.
+            setGravity(false) // 중력 없음.
+
+            // 슬롯 세팅
+            disabledSlots.add(EquipmentSlot.FEET)
+            disabledSlots.add(EquipmentSlot.CHEST)
+            disabledSlots.add(EquipmentSlot.HAND)
+            disabledSlots.add(EquipmentSlot.LEGS)
+            disabledSlots.add(EquipmentSlot.OFF_HAND)
+            disabledSlots.add(EquipmentSlot.HEAD)
+        } // 품질 표시
+    }
+    /*
+    마커 작성
+    Input
+    -----
+    location : 작성 위치
+    realQuality : 실제 품질 (0과 1 사이)
+    maxQuality : 최대 품질
+
+    설명
+    ---
+    지정한 위치에 품질을 표시합니다.
+
+    Return
+    ------
+    없음.
+     */
+
+    private fun eraseMarker(block: Block) {
+        // 마커 지우기
+        val itemGroup = getItemGroup(block.type)
+        if ((itemGroup == ItemGroup.INTERACTIVE_BLOCK) or (itemGroup == ItemGroup.UPGRADE_BLOCK)) {
+            val markerLocation: Location = block.location.let {
+                Location(it.world, it.x + 0.5, it.y + 1.2, it.z + 0.5)
+            } // 마커 지점
+            markerLocation.getNearbyEntitiesByType(ArmorStand::class.java, 0.3).forEach {
+                it.remove()
+            } // 제거
+        }
+    }
+    /*
+    마커 지우기
+    Input
+    -----
+    block : 마커와 연결 된 블록
+
+    설명
+    ---
+    지정한 블록과 연결 된 마커를 지웁니다.
+
+    Return
+    ------
+    없음.
+     */
+
+    private fun getMarker(block: Block): String? {
+        // 마커 값 읽기
+        val itemGroup = getItemGroup(block.type)
+        return if ((itemGroup == ItemGroup.INTERACTIVE_BLOCK) or (itemGroup == ItemGroup.UPGRADE_BLOCK)) {
+            val markerLocation: Location = block.location.let {
+                Location(it.world, it.x + 0.5, it.y + 1.2, it.z + 0.5)
+            } // 마커 지점
+            val listOfMarkers = markerLocation.getNearbyEntitiesByType(ArmorStand::class.java, 0.3)
+            if (listOfMarkers.isEmpty()) {
+                null
+            } else {
+                listOfMarkers.first().customName
+            }
+        } else {
+            null
+        }
+    }
+    /*
+    마커 읽기
+    Input
+    -----
+    block : 마커와 연결 된 블록
+
+    설명
+    ---
+    지정한 블록의 품질 문자열을 읽어옵니다. 만약, 품질 문자열이 없다면, null 을 반환합니다.
+
+    Return
+    ------
+    품질 문자열 / null
+     */
+
+    private fun getMarkerEntity(block: Block): Entity? {
+        // 마커 불러오기
+        val itemGroup = getItemGroup(block.type)
+        return if ((itemGroup == ItemGroup.INTERACTIVE_BLOCK) or (itemGroup == ItemGroup.UPGRADE_BLOCK)) {
+            val markerLocation: Location = block.location.let {
+                Location(it.world, it.x + 0.5, it.y + 1.2, it.z + 0.5)
+            } // 마커 지점
+            val listOfMarkers = markerLocation.getNearbyEntitiesByType(ArmorStand::class.java, 0.3)
+            if (listOfMarkers.isEmpty()) {
+                null
+            } else {
+                listOfMarkers.first()
+            }
+        } else {
+            null
+        }
+    }
+    /*
+    마커 엔티티 가져오기
+    Input
+    -----
+    block : 마커와 연결 된 블록
+
+    설명
+    ---
+    지정한 블록과 연결 된 마커의 아머스탠드를 가져옵니다. 없다면, null 을 반환합니다.
+
+    Return
+    ------
+    연결 된 마커의 아머스탠드 / null
+     */
+
+    private fun reinforceTables(block: Block, player: Player, item: String) {
+        val marker: Entity = getMarkerEntity(block) ?: return // 마커가 없을 경우 강화할 수 없다.
+        val qualityString = marker.customName
+        val quality = qualityString?.let { getQuality(it) } ?: return // 마커가 없을 경우 강화할 수 없다.
+        val maxQuality = getMaxQuality(qualityString)
+        val itemInHand: ItemStack = player.inventory.itemInMainHand
+
+        if (itemInHand.type.name.contains(item)) { // 맞는 재료일 경우
+            val addQuality = getQuality(itemInHand) * getMaxQuality(itemInHand) // 자체 품질
+            val newQuality = min(quality * maxQuality + addQuality, maxQuality.toDouble()) // 새로운 자체 품질
+            itemInHand.amount -= 1
+            player.inventory.setItemInMainHand(itemInHand)
+            marker.customName = rank(maxQuality - newQuality, maxQuality) // 품질 표시 업데이트
+        }
+    }
+    /*
+    마커 강화
+    Input
+    -----
+    block : 마커와 연결 된 블록
+    player : 현재 강화를 시도하는 플레이어
+    item : 강화 재료
+
+    설명
+    ---
+    지정한 블록과 연결 된 마커가 있다면, 해당 마커의 자체 품질을 강화 재료의 자체 품질만큼 증가시킵니다.
+    증가 된 품질이 최대 품질보다 커지면, 최대 품질로 품질이 고정됩니다.
+    강화가 끝나면, 플레이어는 사용한 아이템 1개를 잃습니다.
+
+    Return
+    ------
+    없음.
+     */
+
+    private fun crafting(q: Double, maxQ: Int,
+                         ironCount: Map<String, Int>, recipe: Recipe): ItemStack {
+        val rankDown = ironCount.getValue("PoorPigIron") + ironCount.getValue("FinePigIron") // 선철을 썼을 경우 품질 하락
+        val quality = max(0.0, q - rankDown) // 랭크 다운만큼 랭크 하락한 후 자체 품질
+
+        // 강철 개수 카운트
+        val countIron = ironCount.getValue("Iron")
+        val countSteel = ironCount.getValue("Steel")
+        val countBestSteel = ironCount.getValue("BestSteel")
+
+        // 변수 설정
+        val recipeResult = recipe.result
+        val recipeResultType = recipeResult.type
+
+        // 아이템 준비
+        val result = recipeResult.clone()
+
+        if (recipeResultType.maxDurability > 0) {
+            // 내구도 설정
+            val maxDurability = recipeResultType.maxDurability
+            var durability = maxDurability.toDouble()
+            durability *= GlobalObject.durabilityCoefficient.pow(maxQ - quality)
+            setDurabilityForTools(result, maxDurability, durability)
+        } // 내구도가 존재하는 아이템일 경우
+
+        // 설명란 추가
+        applyDescription(result, quality / recipeResult.amount,
+                ceil(maxQ.toDouble() / recipe.result.amount).toInt())
+
+        // 강철 태그
+        if (countIron > 0) {
+            when {
+                countSteel == countIron -> {
+                    when {
+                        countBestSteel == countIron -> {
+                            addSpecialty(result, false, specialty(SpecialtyTags.BEST_STEEL)) // 설명란이 추가 되어 있으므로 update 가 필요 없음
+                        } // 사용한 철이 모두 강철+일 경우
+                        countBestSteel > 0 -> {
+                            addSpecialty(result, false, specialty(SpecialtyTags.CONTAINS_STEEL_PLUS))
+                        } // 강철+가 최소 1개 이상 사용되었을 경우
+                        else -> {
+                            addSpecialty(result, false, specialty(SpecialtyTags.ALL_STEEL))
+                        } // 강철+가 사용되지 않았을 경우
+                    }
+                } // 사용한 철이 모두 강철일 경우
+                countSteel > 0 -> {
+                    addSpecialty(result, false, specialty(SpecialtyTags.CONTAINS_STEEL))
+                } // 강철이 최소 1개 이상 사용되었을 경우
+                else -> {
+                    addSpecialty(result, false, specialty(SpecialtyTags.NO_STEEL))
+                } // 사용한 철이 모두 주철 / 선철인 경우
+            }
+        } // 철괴가 사용되지 않으면, 강철 태그가 붙지 않음.
+
+        return result
+    }
+
+    private fun tagAfterCrafting(recipeResult: ItemStack, craftingLocation: Location): ItemStack {
+        val block = craftingLocation.block
+
+        // 정교함 태그
+        if (block.type == Material.CRAFTING_TABLE) {
+            val qualityString = getMarker(block)
+            if (qualityString != null) {
+                val quality = getQuality(qualityString)
+                if (quality > 0.99) {
+                    val random = Random.nextDouble()
+                    if (random < GlobalObject.sophisticatedCraftingProbability) {
+                        addSpecialty(recipeResult, false, specialty(SpecialtyTags.SOPHISTICATED))
+                    } // 갓-챠
+                } // 품질이 0.99보다 클 때 정교함 태그가 확률적으로 붙음.
+            } // 품질이 설정되어 있지 않으면, 정교함 태그가 붙지 않음
+        } // 작업대를 사용하지 않으면, 정교함 태그가 붙지 않음
+
+        return recipeResult
+    }
+
     @EventHandler
     fun onBlockBreakingEvent(event: BlockBreakEvent) {
         if (!GlobalObject.isOn) return // 시작 전에는 따로 판단하지 않는다.
-        val player: Player = event.player
 
+        // 변수 설정
+        val player: Player = event.player
         val block: Block = event.block
         val blockGroup: BlockGroup = getBlockGroup(block.type)
-
         val tool: ItemStack? = player.inventory.itemInMainHand
         val toolGroup: ToolGroup = getToolGroup(tool?.type)
 
@@ -45,17 +292,14 @@ class EventListener : Listener {
         when (blockGroup) {
             BlockGroup.WOOD -> {
                 if (toolGroup != ToolGroup.AXE) {
-                    //나무 블록을 캐는데 도끼가 아닐 경우
                     player.damage(1.0)
                     if (!GlobalObject.isFundamentallySame(tool, GlobalObject.flake)) {
                         // 뗀석기를 사용하지 않았을 경우
                         event.isCancelled = true
                         return
-                    } else {
+                    } // 사용한 도구가 뗀석기도 아닐 경우
+                    else {
                         // 사용한 도구가 뗀석기일 경우
-                        /*
-                        뗀석기를 사용하여 나무를 캐면, GlobalFields.flakeBreakProbability의 확률로 파괴 됨.
-                         */
                         val random: Double = Random.nextDouble()
                         if (random < GlobalObject.flakeBreakProbability) {
                             if (tool!!.amount == 1)
@@ -64,58 +308,97 @@ class EventListener : Listener {
                                 tool.amount -= 1
                                 player.inventory.setItemInMainHand(tool)
                             }
-                        }
+                        } // 뗀석기 파괴 갓-챠
                     }
-                }
-            }
+                } // 도끼가 아닐 경우
+            } // 나무 블록을 캐는데
 
             BlockGroup.STONE, BlockGroup.ORE, BlockGroup.CONCRETE,
             BlockGroup.TERRACOTTA -> {
                 if (toolGroup != ToolGroup.PICKAXE) {
-                    // 돌, 광석, 테라코타를 캐는데 곡괭이가 아닐 경우
+                    // 곡괭이가 아닐 경우
                     player.damage(2.0)
                     event.isCancelled = true
                     return
                 }
-            }
+            } // 돌, 광석, 테라코타를 캐는데
 
             BlockGroup.CROP -> {
                 if (toolGroup != ToolGroup.HOE) {
-                    // 농작물을 수확하는데 괭이가 아닐 경우
+                    // 괭이가 아닐 경우
                     event.isDropItems = false // 캘 수는 있지만, 아이템 드랍이 되지 않음.
                     return
                 }
-            }
+            } // 농작물을 수확하는데
 
-            else -> {}
-        }
+            else -> {
+            } // 그 외에는 없음 (when 형식 맞추기 위한 dummy)
+        } // 틀린 도구를 사용했을 경우 return 됨.
+
+        if (getMarkerEntity(block) != null) {
+            val specialties : List<String> = tool?.let { getSpecialties(it) } ?: listOf()
+            if (specialties.contains(specialtyToTag(SpecialtyTags.SOPHISTICATED))) {
+                val qualityString = getMarker(block)!!
+                val markedMaxQuality: Int = getMaxQuality(qualityString) // 최대 품질
+                val markedQuality: Double = getQuality(qualityString) * markedMaxQuality // 자체 품질
+
+                val appliedQuality: Double = max(0.0, markedQuality - 1.0) // 품질 1 하락
+
+                val dropItem = block.drops.find {
+                    it.type == block.type
+                } // 원래 드랍 되려던 아이템 중 자기 자신과 같은 아이템
+                dropItem?.apply {
+                    applyDescription(dropItem, appliedQuality, markedMaxQuality)
+                    event.isDropItems = false // 원래 드랍은 취소
+                    player.world.dropItemNaturally(block.location, dropItem)
+                } // 품질 적용 및 아이템 스폰
+            } // 정교함이 붙은 도구를 사용하였을 경우, 품질 1이 감소하고, 아이템은 드랍 됨.
+            else {
+                event.isDropItems = false
+            } // 정교함이 붙은 도구를 사용하지 않았을 경우, 아이템이 드랍되지 않음.
+
+            eraseMarker(block) // 마커 지우기
+        } // 마커가 있는 블록을 파괴할 경우
 
         if (tool == null) return // 맨손일 경우 아래 사항 적용 X
 
         // 특수
-        // 코크스 자연 채광
+
         if ((block.type == Material.COAL_ORE)
                 and (getToolGroup(tool.type) == ToolGroup.PICKAXE)) {
             val random = Random.nextDouble()
             if (random < GlobalObject.cokesDropProbability) {
                 val coke = GlobalObject.coke.clone()
                 player.world.dropItemNaturally(event.block.location, coke)
-            }
-        }
+            } // 코크스 갓-챠
+        } // 코크스 자연 채광
 
         if (((block.type == Material.DIAMOND_ORE)
                         or (block.type == Material.EMERALD_ORE))
                 and (tool.type == Material.IRON_PICKAXE)) {
-            // 철곡괭이로 다이아몬드 혹은 에메랄드 원석을 캘 때
-            if (!isSteelTool(tool)) {
-                event.isDropItems = false
-            } else if (!isPerfectSteelTool(tool)) {
-                val random = Random.nextDouble()
-                if (random < GlobalObject.jewelBreakProbability) {
+            when (getSteelType(tool)) {
+                null, SteelType.NONE -> {
                     event.isDropItems = false
-                }
-            }
-        }
+                } // 철곡괭이가 아니거나 주철 / 선철 곡괭이면 드랍 X
+                SteelType.CONTAINS_STEEL -> {
+                    val random = Random.nextDouble()
+                    if (random < GlobalObject.jewelBreakProbability) {
+                        event.isDropItems = false
+                    }
+                } // 강철이 포함된 철곡괭이일 경우 20% 확률로 파괴 됨.
+                SteelType.ALL_STEEL -> {} // 강철 곡괭이는 변화 없음.
+                SteelType.CONTAINS_BEST_STEEL -> {
+                    event.expToDrop *= 2
+                } // 강철+ 곡괭이의 경우 경험치 2배 드랍
+                SteelType.ALL_BEST_STEEL -> {
+                    event.expToDrop *= 2
+                    val random = Random.nextDouble()
+                    if (random < GlobalObject.bestSteelPickaxeJewelProbability) {
+                        player.world.dropItemNaturally(block.location, ItemStack(block.type))
+                    }
+                } // 강철++ 곡괭이의 경우 경험치 2배 + 30% 확률로 원석이 1개 추가로 드랍 됨.
+            } // 철곡괭이의 강철 태그에 따라 결과가 달라짐.
+        } // 철곡괭이로 다이아몬드 혹은 에메랄드 원석을 캘 때
     }
 
     @EventHandler
@@ -125,7 +408,7 @@ class EventListener : Listener {
         val block: Material = event.to
         if ((fallingBlock.type == EntityType.FALLING_BLOCK) and (block == Material.GRAVEL)) {
             /*
-            자갈을 떨어뜨리면 GlobalFields.flakeToolProbability의 확률로 뗀석기가 나온다.
+            자갈을 떨어뜨리면 일정 확률로 뗀석기가 나온다.
              */
             val random: Double = Random.nextDouble()
             if (random < GlobalObject.flakeToolProbability) {
@@ -144,6 +427,12 @@ class EventListener : Listener {
         if (!GlobalObject.isOn) return // 시작 전에는 따로 판단하지 않는다.
         if (event.currentItem?.type == Material.BARRIER) {
             event.isCancelled = true
+        } else {
+            val location = event.inventory.location ?: return // 작업 장소가 불특정할 경우를 제외한다.
+            val inventoryResult = event.inventory.result ?: return // 조합 결과가 없을 경우를 제외한다.
+            val result = tagAfterCrafting(inventoryResult, location)
+
+            event.inventory.result = result
         }
     }
 
@@ -156,7 +445,6 @@ class EventListener : Listener {
         // 품질 계산
         var quality = 0.0
         var maxQuality = 0
-
         matrix.forEach {
             if (it != null) {
                 val q = getQuality(it)
@@ -166,200 +454,95 @@ class EventListener : Listener {
             }
         }
 
-        if (matrix.size == 9) { // 작업대
-            val ironCount = countIron(matrix) // 조합에 들어간 철괴 개수
-            when {
-                (ironCount["Iron"]!! > 0) // 철이 사용 됨.
-                        and (recipe.result.type.maxDurability > 0) -> {
-                    // 선철 썼을 경우 퀄리티 하락
-                    val rankDown = ironCount["PoorPigIron"]!! + ironCount["FinePigIron"]!! // 선철을 썼을 경우 품질 하락
-                    quality = max(0.0, quality - rankDown)
-
-                    // 강철 개수 카운트
-                    val steelCount = ironCount["Steel"]!!
-                    val bestSteelCount = ironCount["BestSteel"]!!
-
-                    // 내구도 설정
-                    val result = recipe.result.clone()
-                    val maxDurability = result.type.maxDurability
-                    var durability = maxDurability.toDouble()
-                    durability *= GlobalObject.durabilityCoefficient.pow(maxQuality - quality)
-                    setDurabilityForTools(result, maxDurability, durability)
-
-                    // 강철 특수
-                    when {
-                        steelCount == ironCount["Iron"]!! -> {
-                            // 모두 강철을 사용하였을 때 Best Steel 특수
-                            when {
-                                bestSteelCount == ironCount["Iron"]!! ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.ALL_BEST_STEEL))
-                                bestSteelCount > 0 ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.CONTAINS_BEST_STEEL))
-                                else ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.ALL_STEEL))
-                            }
-                        }
-                        steelCount > 0 -> {
-                            applyDescription(result, quality / recipe.result.amount,
-                                    ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.CONTAINS_STEEL))
-                        }
-                        else -> {
-                            applyDescription(result, quality / recipe.result.amount,
-                                    ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.NONE))
-                        }
-                    }
-                    event.inventory.result = result
-                    return
-                }
-                ironCount["Iron"]!! > 0 -> {
-                    if (
-                            GlobalObject.isFundamentallySame(recipe.result, GlobalObject.poorSteel)
-                    ) {
-                        val converter = matrix.find {
-                            GlobalObject.isFundamentallySame(it, GlobalObject.standardConverter)
-                        }
-
-                        val iron = matrix.find {
-                            GlobalObject.isFundamentallySame(it, GlobalObject.poorPigIron)
-                        }
-
-                        if ((converter == null) or (iron == null)) {
-                            event.inventory.result = null
-                        } else {
-                            val converterQuality = getQuality(converter!!)
-                            val ironQuality = getQuality(iron!!)
-
-                            when {
-                                ironQuality < 0.5 ->
-                                    event.inventory.result = GlobalObject.banItem.clone()
-                                converterQuality <= (10.0 / 12) ->
-                                    event.inventory.result = GlobalObject.poorSteel.clone()
-                                else ->
-                                    event.inventory.result = GlobalObject.fineSteel.clone()
-                            }
-                        }
-                        return
-                    } // 조합 결과가 강철일 경우
-
-                    if (recipe.result.type == Material.BLAST_FURNACE) {
-                        var craftable = true
-                        matrix.forEach {
-                            if (it == null) craftable = false // 빈 공간이 있을 경우 제작 불가
-
-                            if (it.type == Material.IRON_INGOT) {
-                                if (!GlobalObject.isFundamentallySame(it, GlobalObject.poorSteel)) {
-                                    craftable = false
-                                }
-                            } // 사용한 철괴가 강철이 아닐 경우 제작 불가
-
-                            if (it.type == Material.COAL) {
-                                if (!GlobalObject.isFundamentallySame(it, GlobalObject.coke)) {
-                                    craftable = false
-                                }
-                            } // 사용한 석탄이 코크스가 아닐 경우 제작 불가
-                        }
-
-                        if (!craftable) {
-                            event.inventory.result = GlobalObject.banItem.clone()
-                            return
-                        }
-                    } // 조합 결과가 용광로일 경우
-
-                    if (recipe.result.type == Material.ANVIL) {
-                        var craftable = true
-                        matrix.forEach {
-                            if (it != null) {
-                                if (it.type == Material.IRON_INGOT) {
-                                    if (!GlobalObject.isFundamentallySame(it, GlobalObject.poorSteel) and
-                                            !GlobalObject.isFundamentallySame(it, GlobalObject.poorCastIron)) {
-                                        craftable = false
-                                    }
-                                } // 사용한 철괴가 강철 또는 주철이 아닐 경우 제작 불가
-                                if (it.type == Material.IRON_BLOCK) {
-                                    val q = getQuality(it)
-                                    val maxQ = getMaxQuality(it)
-                                    if (maxQ == GlobalObject.defaultMaxQuality) {
-                                        craftable = false
-                                    } // 자연에서 얻은 철블록일 경우, 제작 불가
-
-                                    if (q < 0.8) {
-                                        craftable = false
-                                    } // 품질이 0.8 이하일 경우, 제작 불가
-                                }
-                            }
-                        }
-
-                        if (!craftable) {
-                            event.inventory.result = GlobalObject.banItem.clone()
-                            return
-                        }
-                    }
-
-                    // 선철 썼을 경우 퀄리티 하락
-                    val rankDown = ironCount["PoorPigIron"]!! + ironCount["FinePigIron"]!! // 선철을 썼을 경우 품질 하락
-                    quality = max(0.0, quality - rankDown)
-
-                    // 강철 개수 카운트
-                    val steelCount = ironCount["Steel"]!!
-                    val bestSteelCount = ironCount["BestSteel"]!!
-
-                    val result = recipe.result.clone()
-                    when {
-                        steelCount == ironCount["Iron"]!! -> {
-                            when {
-                                bestSteelCount == ironCount["Iron"]!! ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.ALL_BEST_STEEL))
-                                bestSteelCount > 0 ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.CONTAINS_BEST_STEEL))
-                                else ->
-                                    applyDescription(result, quality / recipe.result.amount,
-                                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.ALL_STEEL))
-                            }
-                        }
-                        steelCount > 0 ->
-                            applyDescription(result, quality / recipe.result.amount,
-                                    ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.CONTAINS_STEEL))
-                        else ->
-                            applyDescription(result, quality / recipe.result.amount,
-                                    ceil(maxQuality.toDouble() / recipe.result.amount).toInt(), specialty(SteelType.NONE))
-                    }
-                    event.inventory.result = result
-                    return
-                } // 철이 사용 됨.
-                else -> {
-                    val result = recipe.result.clone()
-
-                    if (recipe.result.type.maxDurability > 0) {
-                        val maxDurability = result.type.maxDurability
-                        var durability = maxDurability.toDouble()
-                        durability *= GlobalObject.durabilityCoefficient.pow(maxQuality - quality)
-                        setDurabilityForTools(result, maxDurability, durability)
-                    }
-
-                    applyDescription(result, quality / recipe.result.amount,
-                            ceil(maxQuality.toDouble() / recipe.result.amount).toInt())
-                    event.inventory.result = result
-                }
-            }
-        } else {
-            val result = recipe.result.clone()
-
-            if (recipe.result.type.maxDurability > 0) {
-                val maxDurability = result.type.maxDurability
-                var durability = maxDurability.toDouble()
-                durability *= GlobalObject.durabilityCoefficient.pow(maxQuality - quality)
-                setDurabilityForTools(result, maxDurability, durability)
+        if (
+                GlobalObject.isFundamentallySame(recipe.result, GlobalObject.poorSteel)
+        ) {
+            val converter = matrix.find {
+                GlobalObject.isFundamentallySame(it, GlobalObject.standardConverter)
             }
 
-            applyDescription(result, quality / recipe.result.amount,
-                    ceil(maxQuality.toDouble() / recipe.result.amount).toInt())
-            event.inventory.result = result
-        }
+            val iron = matrix.find {
+                GlobalObject.isFundamentallySame(it, GlobalObject.poorPigIron)
+            }
+
+            if ((converter == null) or (iron == null)) {
+                event.inventory.result = GlobalObject.banItem.clone()
+                return
+            } // 전로나 철괴가 조건을 충족하지 못한 경우
+            else {
+                val converterQuality = getQuality(converter!!)
+                val ironQuality = getQuality(iron!!)
+
+                when {
+                    ironQuality < 0.5 ->
+                        event.inventory.result = GlobalObject.banItem.clone()
+                    converterQuality <= (10.0 / 12) ->
+                        event.inventory.result = GlobalObject.poorSteel.clone()
+                    else ->
+                        event.inventory.result = GlobalObject.fineSteel.clone()
+                }
+                return
+            }
+        } // 조합 결과가 강철일 경우 → 강철은 다른 아이템과 다르므로, 바로 return
+
+        if (recipe.result.type == Material.BLAST_FURNACE) {
+            var isAbleToCraft = true // true 일 때 조합 가능
+            matrix.forEach {
+                if (it == null) isAbleToCraft = false // 빈 공간이 있을 경우 제작 불가
+
+                if (it.type == Material.IRON_INGOT) {
+                    if (!GlobalObject.isFundamentallySame(it, GlobalObject.poorSteel)) {
+                        isAbleToCraft = false
+                    }
+                } // 사용한 철괴가 강철이 아닐 경우 제작 불가
+
+                if (it.type == Material.COAL) {
+                    if (!GlobalObject.isFundamentallySame(it, GlobalObject.coke)) {
+                        isAbleToCraft = false
+                    }
+                } // 사용한 석탄이 코크스가 아닐 경우 제작 불가
+            } // 조합 조건 대조
+
+            if (!isAbleToCraft) {
+                event.inventory.result = GlobalObject.banItem.clone()
+                return
+            } // 조합 불가능
+        } // 조합 결과가 용광로일 경우
+
+        if (recipe.result.type == Material.ANVIL) {
+            var isAbleToCraft = true // true 일 때 조합 가능
+            matrix.forEach {
+                if (it != null) {
+                    if (it.type == Material.IRON_INGOT) {
+                        if (!GlobalObject.isFundamentallySame(it, GlobalObject.poorSteel) and
+                                !GlobalObject.isFundamentallySame(it, GlobalObject.poorCastIron)) {
+                            isAbleToCraft = false
+                        }
+                    } // 사용한 철괴가 강철 또는 주철이 아닐 경우 제작 불가
+                    if (it.type == Material.IRON_BLOCK) {
+                        val q = getQuality(it)
+                        val maxQ = getMaxQuality(it)
+                        if (maxQ == GlobalObject.defaultMaxQuality) {
+                            isAbleToCraft = false
+                        } // 자연에서 얻은 철블록일 경우, 제작 불가
+
+                        if (q < 0.8) {
+                            isAbleToCraft = false
+                        } // 품질이 0.8 이하일 경우, 제작 불가
+                    }
+                }
+            } // 조합 조건 대조
+
+            if (!isAbleToCraft) {
+                event.inventory.result = GlobalObject.banItem.clone()
+                return
+            } // 조합 불가능
+        } // 조합 결과가 모루일 경우
+
+        val ironCount = countIron(matrix)
+        val result = crafting(quality, maxQuality, ironCount, recipe)
+
+        event.inventory.result = result
     }
 
     @EventHandler
@@ -370,13 +553,13 @@ class EventListener : Listener {
             val itemInMainHand: ItemStack = player.inventory.itemInMainHand
             val itemInOffHand: ItemStack = player.inventory.itemInOffHand
             val mainHandCount =
-                    if (GlobalObject.isSame(itemInMainHand, GlobalObject.coke)) {
+                    if (GlobalObject.isFundamentallySame(itemInMainHand, GlobalObject.coke)) {
                         itemInMainHand.amount
                     } else {
                         0
                     } // 많이 사용하는 손에 있는 코크스 개수
             val offHandCount =
-                    if (GlobalObject.isSame(itemInOffHand, GlobalObject.coke)) {
+                    if (GlobalObject.isFundamentallySame(itemInOffHand, GlobalObject.coke)) {
                         itemInOffHand.amount
                     } else {
                         0
@@ -442,7 +625,19 @@ class EventListener : Listener {
                 GlobalObject.isFundamentallySame(droppedItem, GlobalObject.poorSteel) and
                 (getBlockGroup(blockUnderPlayer.type) == BlockGroup.ANVIL)
         ) {
-            // 모루 위에 강철을 던졌을 때 → 단조
+            // 단조 작업을 시작할 때, 모루의 품질에 따라 모루가 터질 수도 있음.
+            val qualityString: String? = getMarker(blockUnderPlayer)
+            val tableQuality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
+            val random = Random.nextDouble()
+            val base = GlobalObject.itemBreakBaseProbability
+            if (random > (base + (1 - base) * tableQuality)) {
+                eraseMarker(blockUnderPlayer)
+                blockUnderPlayer.breakNaturally()
+                event.player.location.createExplosion(
+                        event.player, 5.0f, false, false
+                )
+            }
+
             event.player.sendActionBar("단조 시작")
 
             enabledBlocks.add(blockUnderPlayer)
@@ -462,7 +657,7 @@ class EventListener : Listener {
                                 tmp < 0 -> 0.0f
                                 else -> tmp
                             }
-                        }
+                        } // 정규 분포로 볼륨 설정
                         val randomPitch = Random.asJavaRandom().nextGaussian().toFloat().let {
                             val tmp = it * 0.3f + 1.0f
                             when {
@@ -470,7 +665,7 @@ class EventListener : Listener {
                                 tmp < 0.5 -> 0.5f
                                 else -> tmp
                             }
-                        }
+                        } // 정규 분포로 볼륨 설정
                         dropWorld.playSound(dropLocation, Sound.BLOCK_ANVIL_USE,
                                 randomVolume, randomPitch) // 모루질 소리
 
@@ -498,16 +693,28 @@ class EventListener : Listener {
                         dropWorld.playSound(dropLocation, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.6f, 1.0f)
                         dropWorld.playFirework(itemDrop.location, finishEffect, 10.0)
                         dropPlayer.sendActionBar("단조 작업 완료!")
-                    } // 강철로 레벨 업
+                    } // 강철 품질 업
             Bukkit.getScheduler().runTaskLater(plugin!!, finishForging, forgingTicks.toLong())
             for (i in 1 until forgingTicks / 60) {
                 Bukkit.getScheduler().runTaskLater(plugin!!, forgingSpark, i * 60L) // 3초에 한 번씩 모루질 소리
             }
-        }
+        } // 모루 위에 강철을 던졌을 때 → 단조
 
         if (blockUnderPlayer.type == Material.SMITHING_TABLE) {
-            // 어떤 물건이든 대장장이 작업대 위에 올렸을 때 → 강화 (단, 철, 다이아몬드 제외)
+            // 강화 작업을 시작할 때, 대장장이 작업대의 품질에 따라 터질 수도 있음.
+            val qualityString: String? = getMarker(blockUnderPlayer)
+            val tableQuality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
+            var random = Random.nextDouble()
+            val base = GlobalObject.itemBreakBaseProbability
+            if (random > (base + (1 - base) * tableQuality)) {
+                eraseMarker(blockUnderPlayer)
+                blockUnderPlayer.breakNaturally()
+                event.player.location.createExplosion(
+                        event.player, 5.0f, false, false
+                )
+            }
             if ((droppedItem.type == Material.IRON_INGOT) or (droppedItem.type == Material.DIAMOND)) return
+
             val bookShelfArray: ArrayList<Block> = blockUnderPlayer.location.let {
                 val x = it.x
                 val y = it.y - 1
@@ -518,7 +725,7 @@ class EventListener : Listener {
                 for (xIdx in -1..1) {
                     for (zIdx in -1..1) {
                         if ((xIdx != 0) or (zIdx != 0)) {
-                            // xIdx와 zIdx가 모두 0이 아닐 경우 (바로 아래 칸이 아니면)
+                            // xIdx 와 zIdx 가 모두 0이 아닐 경우 (바로 아래 칸이 아니면)
                             val checkLocation = Location(world, x + xIdx, y, z + zIdx)
                             if (checkLocation.block.type == Material.BOOKSHELF) {
                                 bookShelves.add(checkLocation.block)
@@ -527,7 +734,7 @@ class EventListener : Listener {
                     }
                 }
                 bookShelves
-            } // 대장장이 작업대 아래 책장 개수 (바로 아래 제외)
+            } // 대장장이 작업대 아래 책장들 (바로 아래 제외)
             event.player.sendActionBar("강화 시작")
 
             // 파괴 불가능 블록 추가
@@ -569,10 +776,22 @@ class EventListener : Listener {
                     } // 강화
             val finishForging =
                     Runnable {
+                        // 책장의 품질 합계 계산
+                        var totalBookShelfQuality = 0.0
+                        for (bookShelf in bookShelfArray) {
+                            val bookShelfQualityString: String? = getMarker(bookShelf)
+                            val bookShelfQuality: Double = bookShelfQualityString?.let {
+                                getQuality(bookShelfQualityString)
+                            } ?: 0.5
+                            totalBookShelfQuality += bookShelfQuality
+                        }
+
+                        val coefficient: Double = totalBookShelfQuality + tableQuality * 2 // 총 감률 계수
+
                         val failureProbability = GlobalObject.reinForceBaseFailProbability -
-                                GlobalObject.reinForceFailProbabilityDecrease * bookShelfArray.size // 실패 확률
+                                GlobalObject.reinForceFailProbabilityDecrease * coefficient // 실패 확률
                         val breakProbability = GlobalObject.reinForceBaseBreakProbability -
-                                GlobalObject.reinForceBreakProbabilityDecrease * bookShelfArray.size // 파괴 확률
+                                GlobalObject.reinForceBreakProbabilityDecrease * coefficient // 파괴 확률
 
                         // 파괴 가능 블록으로 복귀
                         enabledBlocks.remove(blockUnderPlayer)
@@ -580,7 +799,7 @@ class EventListener : Listener {
                             enabledBlocks.remove(bookShelf)
                         }
 
-                        val random = Random.nextDouble()
+                        random = Random.nextDouble()
 
                         when {
                             (random < breakProbability) -> {
@@ -613,14 +832,14 @@ class EventListener : Listener {
                                 dropWorld.playSound(dropLocation, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.6f, 1.0f)
                                 dropWorld.playFirework(itemDrop.location, finishEffect, 10.0)
                                 dropPlayer.sendActionBar("강화 작업 완료!")
-                            }
+                            } // 성공
                         }
                     } // 품질 상승
             Bukkit.getScheduler().runTaskLater(plugin!!, finishForging, reinforcingTicks.toLong())
             for (i in 1 until reinforcingTicks / 60) {
                 Bukkit.getScheduler().runTaskLater(plugin!!, forgingSpark, i * 60L) // 3초에 한 번씩 모루질 소리
             }
-        }
+        } // 어떤 물건이든 대장장이 작업대 위에 올렸을 때 → 강화 (단, 철, 다이아몬드 제외)
     }
 
     @EventHandler
@@ -629,8 +848,41 @@ class EventListener : Listener {
 
         val block = event.block
         if (enabledBlocks.contains(block)) { // 부술 수 없는 블록은 때릴 수 없다.
-            event.player.sendActionBar("작업 중에는 부술 수 없다")
+            event.player.sendActionBar("작업 중에는 부수거나 수리할 수 없다")
             event.isCancelled = true
+        } else if (isAbleToReinforce(block)) { // 강화할 수 있는 블록들을 때릴 때
+            when (block.type) {
+                Material.CRAFTING_TABLE -> {
+                    reinforceTables(block, event.player, "PLANKS") // 판자를 통해 강화 가능
+                } // 작업대 강화
+
+                Material.SMITHING_TABLE -> {
+                    reinforceTables(block, event.player, "SMOOTH_STONE") // 매끄러운 돌을 통해 강화 가능
+                } // 대장장이 작업대 강화
+
+                Material.ANVIL -> {
+                    reinforceTables(block, event.player, "INGOT") // 괴 (철, 금, 네더라이트)를 통해 강화 가능
+                } // 모루 강화
+
+                Material.ENCHANTING_TABLE -> {
+                    reinforceTables(block, event.player, "DIAMOND") // 다이아몬드가 들어간 모든 재료로 강화 가능
+                } // 인챈트 테이블 강화
+
+                Material.FURNACE -> {
+                    reinforceTables(block, event.player, "COAL") // 석탄, 목탄, 석탄 블록 등으로 강화
+                } // 화로 강화
+
+                Material.BLAST_FURNACE -> {
+                    reinforceTables(block, event.player, "COAL") // 석탄, 목탄, 석탄 블록 등으로 강화
+                } // 용광로 강화
+
+                Material.SMOKER -> {
+                    reinforceTables(block, event.player, "COAL") // 석탄, 목탄, 석탄 블록 등으로 강화
+                } // 훈연기 강화
+
+                else -> {
+                }
+            }
         }
     }
 
@@ -639,14 +891,35 @@ class EventListener : Listener {
         if (!GlobalObject.isOn) return
 
         if (event.clickedBlock != null) {
-            if (enabledBlocks.contains(event.clickedBlock)) {
+            val clickedBlock = event.clickedBlock!!
+            if (enabledBlocks.contains(clickedBlock)) {
                 event.player.sendActionBar("작업 중에는 사용할 수 없다")
                 event.isCancelled = true
-            }
+                return
+            } // 작업 중인 블록을 사용했을 경우
+            else if (getItemGroup(clickedBlock.type) == ItemGroup.INTERACTIVE_BLOCK) {
+                if ((event.action == Action.LEFT_CLICK_BLOCK) and
+                        isAbleToReinforce(clickedBlock)) return // 강화 작업 중에는 터지지 않는다.
+
+                val qualityString: String? = getMarker(clickedBlock)
+                val quality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
+                val random = Random.nextDouble()
+                val base = GlobalObject.itemBreakBaseProbability
+                if (random > (base + (1 - base) * quality)) {
+                    eraseMarker(clickedBlock)
+                    clickedBlock.breakNaturally()
+                    event.player.location.createExplosion(
+                            event.player, 5.0f, false, false
+                    )
+                }
+            } // 상호작용할 수 있는 블록일 경우
         }
 
         val hand = event.hand ?: return
         val itemOnHand = event.item ?: return
+        val itemGroup: ItemGroup = getItemGroup(itemOnHand.type)
+
+        if ((itemGroup == ItemGroup.TOOL) or (itemGroup == ItemGroup.FOOD)) return // 손에 들고 있는 아이템이 도구 혹은 음식인 경우, 깨지지 않음.
 
         val quality = getQuality(itemOnHand)
         val base = GlobalObject.itemBreakBaseProbability
@@ -655,6 +928,57 @@ class EventListener : Listener {
             event.player.world.playSound(event.player.location, Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f)
             event.player.sendActionBar("${ChatColor.RED}아이템이 깨져 버렸다.")
             event.player.inventory.setItem(hand, null)
+            event.isCancelled = true
+        }
+    }
+
+    @EventHandler
+    fun onBlockPlace(event: BlockPlaceEvent) {
+        if (!GlobalObject.isOn) return // 시작 전에는 따로 판단하지 않는다.
+
+        val block = event.block
+        val location = block.location
+        val player = event.player
+        val blockAsItemStack: ItemStack = player.inventory.let {
+            val mainHand = it.itemInMainHand
+            val offHand = it.itemInOffHand
+            if (mainHand.type.isBlock) { // 주요 손에 있는 아이템이 블록일 경우
+                mainHand
+            } else { // 아닐 경우
+                offHand
+            }
+        } // 설치하는 블록을 아이템 스택으로
+        val quality = getQuality(blockAsItemStack)
+        val maxQuality = getMaxQuality(blockAsItemStack)
+        val itemGroup = getItemGroup(blockAsItemStack.type)
+
+        if ((itemGroup == ItemGroup.INTERACTIVE_BLOCK) or (itemGroup == ItemGroup.UPGRADE_BLOCK)) {
+            writeMarker(location, quality, maxQuality)
+        }
+    }
+
+    @EventHandler
+    fun onBlockFade(event: BlockFadeEvent) {
+        if (!GlobalObject.isOn) return
+
+        eraseMarker(event.block)
+    }
+
+    @EventHandler
+    fun onBlockExplode(event: BlockExplodeEvent) {
+        if (!GlobalObject.isOn) return
+
+        event.blockList().forEach {
+            eraseMarker(it)
+        }
+    }
+
+    @EventHandler
+    fun onBlockExplodeByEntity(event: EntityExplodeEvent) {
+        if (!GlobalObject.isOn) return
+
+        event.blockList().forEach {
+            eraseMarker(it)
         }
     }
 }

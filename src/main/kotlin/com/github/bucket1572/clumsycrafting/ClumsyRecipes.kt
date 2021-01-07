@@ -32,9 +32,9 @@ object ClumsyRecipes {
     private fun cokesFuelRecipe() : FurnaceRecipe {
         val result = GlobalObject.coke.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "coke")
+        val namespaceKey = NamespacedKey(plugin!!, "coke")
         return FurnaceRecipe(
-                namespacedKey, result, Material.COAL,
+                namespaceKey, result, Material.COAL,
                 GlobalObject.cokesDryingExperience.toFloat(), GlobalObject.cokesDryingTickTime
         )
     } // 코크스 조합법
@@ -42,9 +42,9 @@ object ClumsyRecipes {
     private fun cokesBlastingRecipe() : BlastingRecipe {
         val result = GlobalObject.coke.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "coke_blast")
+        val namespaceKey = NamespacedKey(plugin!!, "coke_blast")
         return BlastingRecipe(
-                namespacedKey, result, Material.COAL,
+                namespaceKey, result, Material.COAL,
                 GlobalObject.cokesDryingExperience.toFloat(), GlobalObject.cokesDryingTickTime / 2
         )
     } // 코크스 (용광로) 조합법
@@ -52,10 +52,10 @@ object ClumsyRecipes {
     private fun vanillaIronIngot() : FurnaceRecipe {
         val result = GlobalObject.poorPigIron.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "original_iron_ingot")
+        val namespaceKey = NamespacedKey(plugin!!, "original_iron_ingot")
 
         return FurnaceRecipe(
-                namespacedKey, result, Material.IRON_ORE,
+                namespaceKey, result, Material.IRON_ORE,
                 0.7f, 200
         )
     } // 선철 조합법
@@ -63,10 +63,10 @@ object ClumsyRecipes {
     private fun blastIronIngot() : BlastingRecipe {
         val result = GlobalObject.finePigIron.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "original_iron_ingot_blast")
+        val namespaceKey = NamespacedKey(plugin!!, "original_iron_ingot_blast")
 
         return BlastingRecipe(
-                namespacedKey, result, Material.IRON_ORE,
+                namespaceKey, result, Material.IRON_ORE,
                 0.7f, 100
         )
     } // 선철 (용광로) 조합법
@@ -78,9 +78,9 @@ object ClumsyRecipes {
         val addition = RecipeChoice.ExactChoice(mineral)
         val base = RecipeChoice.MaterialChoice(Material.FLOWER_POT)
 
-        val namespacedKey = NamespacedKey(plugin!!, "poor_cast_ingot")
+        val namespaceKey = NamespacedKey(plugin!!, "poor_cast_ingot")
         return SmithingRecipe(
-                namespacedKey, result, base, addition
+                namespaceKey, result, base, addition
         )
     } // 주철 (0/1) 조합법
 
@@ -91,9 +91,9 @@ object ClumsyRecipes {
         val addition = RecipeChoice.ExactChoice(mineral)
         val base = RecipeChoice.MaterialChoice(Material.FLOWER_POT)
 
-        val namespacedKey = NamespacedKey(plugin!!, "fine_cast_ingot")
+        val namespaceKey = NamespacedKey(plugin!!, "fine_cast_ingot")
         return SmithingRecipe(
-                namespacedKey, result, base, addition
+                namespaceKey, result, base, addition
         )
     } // 주철 (1/1) 조합법
 
@@ -102,8 +102,8 @@ object ClumsyRecipes {
 
         val workSpace = RecipeChoice.MaterialChoice(Material.SMITHING_TABLE, Material.ANVIL)
 
-        val namespacedKey = NamespacedKey(plugin!!, "poor_steel_ingot")
-        val recipe = ShapelessRecipe(namespacedKey, result)
+        val namespaceKey = NamespacedKey(plugin!!, "poor_steel_ingot")
+        val recipe = ShapelessRecipe(namespaceKey, result)
         recipe.apply {
             addIngredient(Material.IRON_INGOT)
             addIngredient(Material.CAULDRON)
@@ -118,10 +118,10 @@ object ClumsyRecipes {
         val poorIngot = GlobalObject.poorCastIron.clone()
         val fineIngot = GlobalObject.fineCastIron.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "steel_converter")
+        val namespaceKey = NamespacedKey(plugin!!, "steel_converter")
         val magma = RecipeChoice.MaterialChoice(Material.MAGMA_BLOCK, Material.MAGMA_CREAM)
         val ironIngot = RecipeChoice.ExactChoice(poorIngot, fineIngot)
-        val recipe = ShapedRecipe(namespacedKey, result)
+        val recipe = ShapedRecipe(namespaceKey, result)
         recipe.apply {
             shape("C  ", "CMC", "CCC")
             setIngredient('C', ironIngot)
@@ -136,10 +136,10 @@ object ClumsyRecipes {
         val poorIngot = GlobalObject.poorCastIron.clone()
         val fineIngot = GlobalObject.fineCastIron.clone()
 
-        val namespacedKey = NamespacedKey(plugin!!, "steel_converter_mirrored")
+        val namespaceKey = NamespacedKey(plugin!!, "steel_converter_mirrored")
         val magma = RecipeChoice.MaterialChoice(Material.MAGMA_BLOCK, Material.MAGMA_CREAM)
         val ironIngot = RecipeChoice.ExactChoice(poorIngot, fineIngot)
-        val recipe = ShapedRecipe(namespacedKey, result)
+        val recipe = ShapedRecipe(namespaceKey, result)
         recipe.apply {
             shape("  C", "CMC", "CCC")
             setIngredient('C', ironIngot)
@@ -149,9 +149,9 @@ object ClumsyRecipes {
     } // 전로 거울상 조합법
 
     private fun banRepairs() : ShapelessRecipe {
-        val namespacedKey = NamespacedKey(plugin!!, "ban_repairs")
+        val namespaceKey = NamespacedKey(plugin!!, "ban_repairs")
         val banItem = GlobalObject.banItem.clone()
-        val recipe = ShapelessRecipe(namespacedKey, banItem)
+        val recipe = ShapelessRecipe(namespaceKey, banItem)
         val tools = RecipeChoice.MaterialChoice(
                 Material.DIAMOND_AXE, Material.GOLDEN_AXE, Material.IRON_AXE,
                 Material.NETHERITE_AXE, Material.STONE_AXE, Material.WOODEN_AXE,
@@ -177,9 +177,9 @@ object ClumsyRecipes {
     } // 수리 금지
 
     private fun banBlast() : ShapedRecipe {
-        val namespacedKey = NamespacedKey(plugin!!, "ban_blast")
+        val namespaceKey = NamespacedKey(plugin!!, "ban_blast")
         val banItem = GlobalObject.banItem.clone()
-        val recipe = ShapedRecipe(namespacedKey, banItem)
+        val recipe = ShapedRecipe(namespaceKey, banItem)
         recipe.apply {
             shape("III", "IFI", "SSS")
             setIngredient('I', Material.IRON_INGOT)
@@ -190,9 +190,9 @@ object ClumsyRecipes {
     } // 용광로 조합 금지
 
     private fun alternateBlast() : ShapedRecipe {
-        val namespacedKey = NamespacedKey(plugin!!, "alter_blast")
+        val namespaceKey = NamespacedKey(plugin!!, "alter_blast")
 
-        val recipe = ShapedRecipe(namespacedKey, ItemStack(Material.BLAST_FURNACE))
+        val recipe = ShapedRecipe(namespaceKey, ItemStack(Material.BLAST_FURNACE))
         recipe.apply {
             shape("III", "IFI", "CKC")
             setIngredient('I', Material.IRON_INGOT)

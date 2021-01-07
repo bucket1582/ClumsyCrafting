@@ -1,6 +1,7 @@
 package com.github.bucket1572.clumsycrafting
 
 import org.bukkit.Material
+import org.bukkit.block.Block
 
 enum class BlockGroup {
     /*
@@ -18,7 +19,7 @@ enum class BlockGroup {
 
 fun getBlockGroup(material: Material?) : BlockGroup =
         /*
-        Material 에 해당하는 블록 그룹을 반환
+        Material 에 해당하는 블록 그룹을 반환하는 함수
          */
         when(material) {
             Material.ACACIA_WOOD, Material.BIRCH_WOOD, Material.DARK_OAK_WOOD,
@@ -75,3 +76,15 @@ fun getBlockGroup(material: Material?) : BlockGroup =
 
             else -> BlockGroup.ELSE
         }
+
+fun isAbleToReinforce(block: Block) : Boolean =
+        /*
+        강화 가능한 블록을 반환하는 함수
+         */
+        (block.type == Material.CRAFTING_TABLE) or
+                (block.type == Material.SMITHING_TABLE) or
+                (block.type == Material.ANVIL) or
+                (block.type == Material.ENCHANTING_TABLE) or
+                (block.type == Material.FURNACE) or
+                (block.type == Material.BLAST_FURNACE) or
+                (block.type == Material.SMOKER)

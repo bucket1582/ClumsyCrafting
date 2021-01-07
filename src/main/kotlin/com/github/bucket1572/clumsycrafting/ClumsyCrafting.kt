@@ -17,17 +17,19 @@ object GlobalObject {
     const val cokesDropProbability: Double = 0.05 // 코크스 자연 채광 확률
     const val jewelBreakProbability: Double = 0.2 // 다이아몬드 원석 / 에메랄드 원석 파괴 확률
     const val reinForceBaseFailProbability: Double = 0.4 // 기본 강화 실패 확률
-    const val reinForceBaseBreakProbability: Double = 0.2 // 기본 파괴 확률
-    const val reinForceFailProbabilityDecrease: Double = 0.05 // 강화 실패 확률 감률
+    const val reinForceBaseBreakProbability: Double = 0.22 // 기본 파괴 확률
+    const val reinForceFailProbabilityDecrease: Double = 0.03 // 강화 실패 확률 감률
     const val reinForceBreakProbabilityDecrease: Double = 0.02 // 파괴 확률 감률
-    const val itemBreakBaseProbability: Double = 0.4 // 아이템이 기본적으로 파괴되지 않을 확률
+    const val itemBreakBaseProbability: Double = 0.7 // 아이템이 기본적으로 파괴되지 않을 확률
+    const val sophisticatedCraftingProbability: Double = 0.1 // 정교함 태그가 붙을 확률
+    const val bestSteelPickaxeJewelProbability: Double = 0.3 // 강철++ 곡괭이로 보석을 캤을 때 원석이 1개 추가로 나올 확률
 
     // 이름
     private val flakeName: String = "${ChatColor.WHITE}뗀석기"
     private val cokesName: String = "${ChatColor.WHITE}코크스"
     private val pigIronName: String = "${ChatColor.WHITE}선철"
     private val castIronName: String = "${ChatColor.WHITE}주철"
-    val steelName: String = "${ChatColor.WHITE}강철"
+    private val steelName: String = "${ChatColor.WHITE}강철"
     val converterName: String = "${ChatColor.WHITE}전로"
     private val banItemName: String = "${ChatColor.RED}이 조합법은 금지되었습니다."
 
@@ -52,12 +54,6 @@ object GlobalObject {
     const val durabilityCoefficient : Double = 0.8 // 품질에 따른 내구도의 하락비
     const val forgingTicks: Int = 600 // 단조 작업에 걸리는 시간
     const val reinforcingTicks: Int = 300 // 강화 작업에 걸리는 시간
-
-    // 특성
-    val containsSteel = "${ChatColor.GOLD}강철" // 강철 포함
-    val allSteel = "${ChatColor.YELLOW}강철" // All 강철
-    val containsBestSteel = "${ChatColor.YELLOW}강철+" // 2랭크 강철 포함
-    val allBestSteel = "${ChatColor.YELLOW}강철++" // All 2랭크 강철
 
     init {
         // 선철
@@ -87,17 +83,16 @@ object GlobalObject {
     }
 
     fun isSame(itemA: ItemStack?, itemB: ItemStack?): Boolean =
-            // 두 아이템의 성분과 설명이 같으면 같은 아이템이다.
+            /*
+            두 아이템의 성분과 설명이 모두 같은지 판단하는 함수, 즉 완벽히 동일한가
+             */
             (itemA?.type == itemB?.type) and (itemA?.itemMeta?.lore == itemB?.itemMeta?.lore)
 
     fun isFundamentallySame(itemA: ItemStack?, itemB: ItemStack?): Boolean =
-            // 두 아이템의 성분이 같고, 이름만 같아도 본질적으로는 같은 아이템이다.
+            /*
+            두 아이템의 성분과 이름이 같은지 판단하는 함수
+             */
             (itemA?.type == itemB?.type) and (itemA?.itemMeta?.lore?.get(0) == itemB?.itemMeta?.lore?.get(0))
-
-    fun isSameQuality(itemA: ItemStack?, itemB: ItemStack?): Boolean =
-            // 두 아이템이 본질적으로 같고, 품질까지 같으면 같은 품질의 아이템이다.
-            isFundamentallySame(itemA, itemB) and
-                    (itemA?.itemMeta?.lore?.get(1) == itemB?.itemMeta?.lore?.get(1))
 }
 
 class ClumsyCrafting : JavaPlugin() {
@@ -120,10 +115,10 @@ private class Commands : CommandExecutor {
 
     /*
     ClumsyCraft 커맨드
-    1. 인수 0개 : ClumsyCraft의 상태가 On인지 Off인지 알려줌.
+    1. 인수 0개 : ClumsyCraft 의 상태가 On 인지 Off 인지 알려줌.
     2. 인수 1개 :
-        a. start : ClumsyCraft의 상태를 On으로 바꿈.
-        b. stop : ClumsyCraft의 상태를 Off로 바꿈.
+        a. start : ClumsyCraft 의 상태를 On 으로 바꿈.
+        b. stop : ClumsyCraft 의 상태를 Off 로 바꿈.
      */
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (command.name == "clumsy") {

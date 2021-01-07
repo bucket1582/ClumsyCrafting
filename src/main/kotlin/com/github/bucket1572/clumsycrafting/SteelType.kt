@@ -1,6 +1,7 @@
 package com.github.bucket1572.clumsycrafting
 
 import net.md_5.bungee.api.ChatColor
+import org.bukkit.inventory.ItemStack
 
 private val noSteel = "${ChatColor.WHITE}주철/선철"
 private val containsSteel = "${ChatColor.GOLD}강철" // 강철 포함
@@ -16,11 +17,27 @@ enum class SteelType {
     ALL_BEST_STEEL
 }
 
-fun steelTypeToSpecialty(steelType: SteelType) : String =
-        when(steelType) {
-            SteelType.NONE -> noSteel
-            SteelType.CONTAINS_STEEL -> containsSteel
-            SteelType.ALL_STEEL -> allSteel
-            SteelType.CONTAINS_BEST_STEEL -> containsBestSteel
-            SteelType.ALL_BEST_STEEL -> allBestSteel
-        }
+fun getSteelType(itemStack: ItemStack) : SteelType? =
+        getSpecialties(itemStack).let {
+            val specialties = it
+            when {
+                specialties.contains(noSteel) -> {
+                    SteelType.NONE
+                }
+                specialties.contains(containsSteel) -> {
+                    SteelType.CONTAINS_STEEL
+                }
+                specialties.contains(allSteel) -> {
+                    SteelType.ALL_STEEL
+                }
+                specialties.contains(containsBestSteel) -> {
+                    SteelType.CONTAINS_BEST_STEEL
+                }
+                specialties.contains(allBestSteel) -> {
+                    SteelType.ALL_BEST_STEEL
+                }
+                else -> {
+                    null
+                }
+            }
+        } // 강철 태그를 읽어 오는 함수

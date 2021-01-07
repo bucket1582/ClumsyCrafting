@@ -14,6 +14,7 @@ Clumsy Crafting
 * [적절한 도구의 사용](ClumsyMining.md)
 * [제련과 제강](Smelting.md)
 * [단조와 강화](ForgingAndReinforcing.md)
+* [태그와 인챈트](SpecialtiesAndEnchants.md)
 
 
 Environment
