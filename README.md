@@ -1,6 +1,5 @@
 Clumsy Crafting
 ===
-[![Build Status](https://travis-ci.com/noonmaru/tap-sample-plugin.svg?branch=master)](https://travis-ci.org/noonmaru/tap-sample-plugin)
 
 개요
 --
