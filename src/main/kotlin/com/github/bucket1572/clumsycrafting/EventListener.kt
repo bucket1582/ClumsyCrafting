@@ -582,7 +582,9 @@ class EventListener : Listener {
                     } // 적게 사용하는 손에 있는 코크스 개수
             val cokesCount = mainHandCount + offHandCount // 손에 든 코크스 개수 총합
 
-            if (cokesCount > event.itemAmount) {
+            if (cokesCount == 0) return
+
+            if (cokesCount >= event.itemAmount) {
                 // 손에 든 코크스의 개수가 주철 수보다 많을 경우
                 event.expToDrop = GlobalObject.fineIronExp
 
@@ -613,6 +615,27 @@ class EventListener : Listener {
                         cokes.amount = offHandCount - (event.itemAmount - mainHandCount)
                         player.inventory.setItemInOffHand(cokes)
                     }
+                }
+            }
+            else if (cokesCount < event.itemAmount) {
+                // 손에 든 코크스의 개수가 주철 수보다 적을 경우
+                event.expToDrop = GlobalObject.fineIronExp
+
+                val castIron: ItemStack = GlobalObject.finePigIron.clone() // 주철 세팅
+                castIron.amount = cokesCount
+
+                val poorIron: ItemStack = GlobalObject.poorPigIron.clone() // 예전 주철 세팅
+                poorIron.amount = cokesCount
+
+                val copiedItemStack: ItemStack? = player.inventory.removeItemAnySlot(poorIron)[0]
+                if (copiedItemStack != null) return // 화로에 아이템을 들고 아이템을 가져올 때 생기는 복사 버그 방지
+                player.inventory.addItem(castIron)
+
+                if (mainHandCount > 0) {
+                    player.inventory.setItemInMainHand(null)
+                }
+                if (offHandCount > 0) {
+                    player.inventory.setItemInOffHand(null)
                 }
             }
         }
