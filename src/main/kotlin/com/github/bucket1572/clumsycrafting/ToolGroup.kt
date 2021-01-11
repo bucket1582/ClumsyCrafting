@@ -126,7 +126,7 @@ fun axeDamage(material: Material): Double =
             Material.DIAMOND_AXE -> {9.0}
             Material.NETHERITE_AXE -> {10.0}
             else -> {0.0}
-        }
+        }.let { it - GlobalObject.defaultAttackDamage }
 
 fun axeSpeed(material: Material): Double =
         when(material) {
@@ -137,7 +137,7 @@ fun axeSpeed(material: Material): Double =
             Material.DIAMOND_AXE -> {1.0}
             Material.NETHERITE_AXE -> {1.0}
             else -> {0.0}
-        }
+        }.let { it - GlobalObject.defaultAttackSpeed }
 
 fun swordDamgage(material: Material): Double =
         when(material) {
@@ -148,7 +148,7 @@ fun swordDamgage(material: Material): Double =
             Material.DIAMOND_SWORD -> {7.0}
             Material.NETHERITE_SWORD -> {8.0}
             else -> {0.0}
-        }
+        }.let { it - GlobalObject.defaultAttackDamage }
 
 fun swordSpeed(material: Material): Double =
         when(material) {
@@ -159,7 +159,7 @@ fun swordSpeed(material: Material): Double =
             Material.DIAMOND_SWORD -> {1.6}
             Material.NETHERITE_SWORD -> {1.6}
             else -> {0.0}
-        }
+        }.let { it - GlobalObject.defaultAttackSpeed }
 
 fun helmetArmor(material: Material): Double =
         when(material) {

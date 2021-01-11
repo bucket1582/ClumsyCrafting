@@ -59,6 +59,10 @@ object GlobalObject {
     const val reinforcingTicks: Int = 300 // 강화 작업에 걸리는 시간
     const val torchBurningTicks: Int = 9600 // 기본 횃불 유지 시간
 
+    // 기타
+    const val defaultAttackSpeed: Double = 4.0 // 플레이어 기본 공격 속도
+    const val defaultAttackDamage: Double = 2.0 // 플레이어 기본 공격력
+
     init {
         // 선철
         applyDescription(poorPigIron, pigIronName, 0.0, 1)
