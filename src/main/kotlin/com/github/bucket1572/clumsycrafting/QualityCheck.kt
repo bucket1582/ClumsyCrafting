@@ -1,9 +1,14 @@
 package com.github.bucket1572.clumsycrafting
 
 import net.md_5.bungee.api.ChatColor
+import org.bukkit.attribute.Attribute
+import org.bukkit.attribute.AttributeModifier
+import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.ItemMeta
+import java.time.temporal.TemporalAmount
+import java.util.*
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -186,3 +191,18 @@ fun getMaxQuality(qualityString: String): Int {
         1
     }
 } // 최대 품질을 읽어 오는 함수
+
+fun addAttribute(itemStack: ItemStack, attribute: Attribute, name: String, amount: Double, equipmentSlot: EquipmentSlot) {
+    itemStack.apply {
+        val meta = itemMeta
+        meta.addAttributeModifier(
+                attribute,
+                AttributeModifier(
+                        UUID.randomUUID(), name,
+                        amount,
+                        AttributeModifier.Operation.ADD_NUMBER, equipmentSlot
+                )
+        )
+        itemMeta = meta
+    }
+}

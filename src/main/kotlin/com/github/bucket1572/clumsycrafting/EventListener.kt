@@ -3,6 +3,8 @@ package com.github.bucket1572.clumsycrafting
 import com.github.noonmaru.tap.effect.playFirework
 import net.md_5.bungee.api.ChatColor
 import org.bukkit.*
+import org.bukkit.attribute.Attribute
+import org.bukkit.attribute.AttributeModifier
 import org.bukkit.block.Block
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
@@ -20,10 +22,9 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.util.Vector
-import kotlin.math.ceil
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.math.*
 import kotlin.random.Random
 import kotlin.random.asJavaRandom
 
@@ -275,6 +276,21 @@ class EventListener : Listener {
         } // 작업대를 사용하지 않으면, 정교함 태그가 붙지 않음
 
         return recipeResult
+    }
+
+    private fun canExplodeWhenReinforce(blockUnderPlayer: Block, player: Player) : Double {
+        val qualityString: String? = getMarker(blockUnderPlayer)
+        val tableQuality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
+        val random = Random.nextDouble()
+        val base = GlobalObject.itemBreakBaseProbability
+        if (random > (base + (1 - base) * tableQuality)) {
+            eraseMarker(blockUnderPlayer)
+            blockUnderPlayer.breakNaturally()
+            player.location.createExplosion(
+                    player, 5.0f, false, false
+            )
+        }
+        return tableQuality
     }
 
     @EventHandler
@@ -617,26 +633,17 @@ class EventListener : Listener {
             val z = it.z
             val world = it.world
 
-            val newLocation = Location(world, x, y - 1, z)
+            val newLocation = Location(world, x, y - 0.5, z)
             newLocation.block
         } // 떨어뜨린 위치 아래에 깔린 블록
+        var random: Double
 
         if (
                 GlobalObject.isFundamentallySame(droppedItem, GlobalObject.poorSteel) and
                 (getBlockGroup(blockUnderPlayer.type) == BlockGroup.ANVIL)
         ) {
             // 단조 작업을 시작할 때, 모루의 품질에 따라 모루가 터질 수도 있음.
-            val qualityString: String? = getMarker(blockUnderPlayer)
-            val tableQuality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
-            val random = Random.nextDouble()
-            val base = GlobalObject.itemBreakBaseProbability
-            if (random > (base + (1 - base) * tableQuality)) {
-                eraseMarker(blockUnderPlayer)
-                blockUnderPlayer.breakNaturally()
-                event.player.location.createExplosion(
-                        event.player, 5.0f, false, false
-                )
-            }
+            canExplodeWhenReinforce(blockUnderPlayer, event.player)
 
             event.player.sendActionBar("단조 시작")
 
@@ -702,18 +709,8 @@ class EventListener : Listener {
 
         if (blockUnderPlayer.type == Material.SMITHING_TABLE) {
             // 강화 작업을 시작할 때, 대장장이 작업대의 품질에 따라 터질 수도 있음.
-            val qualityString: String? = getMarker(blockUnderPlayer)
-            val tableQuality: Double = qualityString?.let { getQuality(it) } ?: 0.5 // 마커가 없을 경우 0.5 (기본 NPC 마을 세팅 등)
-            var random = Random.nextDouble()
-            val base = GlobalObject.itemBreakBaseProbability
-            if (random > (base + (1 - base) * tableQuality)) {
-                eraseMarker(blockUnderPlayer)
-                blockUnderPlayer.breakNaturally()
-                event.player.location.createExplosion(
-                        event.player, 5.0f, false, false
-                )
-            }
-            if ((droppedItem.type == Material.IRON_INGOT) or (droppedItem.type == Material.DIAMOND)) return
+            if ((droppedItem.type == Material.IRON_INGOT) or (droppedItem.type.name.contains("DIAMOND"))) return // 다이아몬드 제품 불가
+            val tableQuality = canExplodeWhenReinforce(blockUnderPlayer, event.player)
 
             val bookShelfArray: ArrayList<Block> = blockUnderPlayer.location.let {
                 val x = it.x
@@ -840,6 +837,347 @@ class EventListener : Listener {
                 Bukkit.getScheduler().runTaskLater(plugin!!, forgingSpark, i * 60L) // 3초에 한 번씩 모루질 소리
             }
         } // 어떤 물건이든 대장장이 작업대 위에 올렸을 때 → 강화 (단, 철, 다이아몬드 제외)
+
+        if (blockUnderPlayer.type == Material.ENCHANTING_TABLE) {
+            // 세공 혹은 태그를 붙일 때 인챈트 테이블의 품질에 따라 테이블이 터질 수도 있음.
+            val tableQuality = canExplodeWhenReinforce(blockUnderPlayer, event.player)
+            if (droppedItem.type == Material.BOOK) {
+                TODO("Not yet Implemented")
+            } // 태그 붙이기
+            else {
+                val bookShelfArray: ArrayList<Block> = blockUnderPlayer.location.let {
+                    val x = it.x
+                    val y = it.y
+                    val z = it.z
+                    val world = it.world
+
+                    val bookShelves = ArrayList<Block>()
+                    for (xIdx in -2..2) {
+                        for (zIdx in -2..2) {
+                            if ((abs(xIdx) == 2) or (abs(zIdx) == 2)) {
+                                // xIdx 와 zIdx 중 하나가 2일 경우 (일반적인 인챈트)
+                                val checkLocation = Location(world, x + xIdx, y, z + zIdx)
+                                if (checkLocation.block.type == Material.BOOKSHELF) {
+                                    bookShelves.add(checkLocation.block)
+                                }
+                            }
+                        }
+                    }
+                    bookShelves
+                }
+                event.player.sendActionBar("세공 시작")
+
+                // 파괴 불가능 블록 추가
+                enabledBlocks.add(blockUnderPlayer)
+                for (bookShelf in bookShelfArray) {
+                    enabledBlocks.add(bookShelf)
+                }
+
+                val reinforcingTicks = GlobalObject.reinforcingTicks * droppedItem.amount
+
+                itemDrop.teleport(dropPlayer.location)
+                itemDrop.velocity = Vector(0, 0, 0)
+                itemDrop.pickupDelay = reinforcingTicks + 5 // 5틱은 Padding
+                itemDrop.setWillAge(false)
+
+                val forgingSpark =
+                        Runnable {
+                            val randomVolume = Random.asJavaRandom().nextGaussian().toFloat().let {
+                                val tmp = it * 0.2f + 0.5f
+                                when {
+                                    tmp > 1 -> 1.0f
+                                    tmp < 0 -> 0.0f
+                                    else -> tmp
+                                }
+                            }
+                            val randomPitch = Random.asJavaRandom().nextGaussian().toFloat().let {
+                                val tmp = it * 0.3f + 1.0f
+                                when {
+                                    tmp > 2 -> 2.0f
+                                    tmp < 0.5 -> 0.5f
+                                    else -> tmp
+                                }
+                            }
+                            dropWorld.playSound(dropLocation, Sound.BLOCK_ANVIL_USE,
+                                    randomVolume, randomPitch) // 모루질 소리
+
+                            dropWorld.spawnParticle(Particle.ENCHANTMENT_TABLE, itemDrop.location, 10)
+                            dropPlayer.sendActionBar("세공 작업 중")
+                        } // 강화
+                val finishForging =
+                        Runnable {
+                            // 책장의 품질 합계 계산
+                            var totalBookShelfQuality = 0.0
+                            for (bookShelf in bookShelfArray) {
+                                val bookShelfQualityString: String? = getMarker(bookShelf)
+                                val bookShelfQuality: Double = bookShelfQualityString?.let {
+                                    getQuality(bookShelfQualityString)
+                                } ?: 0.5
+                                totalBookShelfQuality += bookShelfQuality
+                            }
+
+                            val coefficient: Double = totalBookShelfQuality + tableQuality * 4 // 총 감률 계수
+
+                            val failureProbability = GlobalObject.reinForceBaseFailProbability -
+                                    GlobalObject.handworkFailProbabilityDecrease * coefficient // 실패 확률
+                            val breakProbability = GlobalObject.reinForceBaseBreakProbability -
+                                    GlobalObject.handworkBreakProbabilityDecrease * coefficient // 파괴 확률
+
+                            // 파괴 가능 블록으로 복귀
+                            enabledBlocks.remove(blockUnderPlayer)
+                            for (bookShelf in bookShelfArray) {
+                                enabledBlocks.remove(bookShelf)
+                            }
+
+                            random = Random.nextDouble()
+
+                            when {
+                                (random < breakProbability) -> {
+                                    dropWorld.playSound(itemDrop.location, Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f)
+                                    itemDrop.remove()
+                                    dropPlayer.sendActionBar("${ChatColor.RED}아이템 파괴(⊙_⊙;)")
+                                } // 파괴
+
+                                ((breakProbability <= random) and
+                                        (random < (breakProbability + failureProbability))) -> {
+                                    dropWorld.playSound(itemDrop.location, Sound.BLOCK_BELL_USE, 1.0f, 1.0f)
+                                    dropPlayer.sendActionBar("${ChatColor.RED}강화 실패")
+                                } // 강화 실패
+
+                                else -> {
+                                    val quality = getQuality(droppedItem)
+                                    val maxQuality = getMaxQuality(droppedItem)
+
+                                    val reinforcedQuality = min(quality * maxQuality + 1.5, maxQuality.toDouble())
+                                    val specialties = getSpecialties(droppedItem)
+                                    applyDescription(droppedItem, reinforcedQuality, maxQuality, specialties)
+
+                                    // 폭죽
+                                    val finishEffect = FireworkEffect.builder().apply {
+                                        trail(false)
+                                        flicker(false)
+                                        withColor(Color.GREEN, Color.LIME, Color.WHITE, Color.YELLOW)
+                                        with(FireworkEffect.Type.BALL)
+                                    }.build()
+                                    dropWorld.playSound(dropLocation, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.6f, 1.0f)
+                                    dropWorld.playFirework(itemDrop.location, finishEffect, 10.0)
+                                    dropPlayer.sendActionBar("세공 작업 완료!")
+                                } // 성공
+                            }
+                        } // 품질 상승
+                Bukkit.getScheduler().runTaskLater(plugin!!, finishForging, reinforcingTicks.toLong())
+                for (i in 1 until reinforcingTicks / 60) {
+                    Bukkit.getScheduler().runTaskLater(plugin!!, forgingSpark, i * 60L) // 3초에 한 번씩 모루질 소리
+                }
+            } // 다이아몬드 -> 세공
+        } // 인챈트 테이블 위에서 다이아몬드를 던졌을 때 → 세공 / 태그 붙이기
+
+        if (blockUnderPlayer.type == Material.CRAFTING_TABLE) {
+            // 재가공할 때 테이블 터질 수 있음.
+            val toolGroup = getToolGroup(droppedItem.type)
+            if ((getItemGroup(droppedItem.type) != ItemGroup.TOOL) or
+                    (toolGroup == ToolGroup.PICKAXE) or
+                    (toolGroup == ToolGroup.BUCKET) or
+                    (toolGroup == ToolGroup.HOE) or
+                    (toolGroup == ToolGroup.SHOVEL) or
+                    (toolGroup == ToolGroup.RANGED) or
+                    (toolGroup == ToolGroup.PROTECT) or
+                    (!getSpecialties(droppedItem).contains(specialty(SpecialtyTags.REFORMED)))) return // 도구만 가능, 재가공 제품은 불가
+            canExplodeWhenReinforce(blockUnderPlayer, event.player)
+
+            event.player.sendActionBar("재가공 시작")
+
+            enabledBlocks.add(blockUnderPlayer)
+            val forgingTicks = GlobalObject.forgingTicks * droppedItem.amount
+
+            itemDrop.teleport(dropPlayer.location)
+            itemDrop.velocity = Vector(0, 0, 0)
+            itemDrop.pickupDelay = forgingTicks + 5 // 5틱은 Padding
+            itemDrop.setWillAge(false)
+
+            val forgingSpark =
+                    Runnable {
+                        val randomVolume = Random.asJavaRandom().nextGaussian().toFloat().let {
+                            val tmp = it * 0.2f + 0.5f
+                            when {
+                                tmp > 1 -> 1.0f
+                                tmp < 0 -> 0.0f
+                                else -> tmp
+                            }
+                        } // 정규 분포로 볼륨 설정
+                        val randomPitch = Random.asJavaRandom().nextGaussian().toFloat().let {
+                            val tmp = it * 0.3f + 1.0f
+                            when {
+                                tmp > 2 -> 2.0f
+                                tmp < 0.5 -> 0.5f
+                                else -> tmp
+                            }
+                        } // 정규 분포로 볼륨 설정
+                        dropWorld.playSound(dropLocation, Sound.BLOCK_ANVIL_USE,
+                                randomVolume, randomPitch) // 모루질 소리
+
+                        dropWorld.spawnParticle(Particle.CRIT, itemDrop.location, 10)
+                        dropPlayer.sendActionBar("재가공 작업 중")
+                    } // 모루질
+            val finishForging =
+                    Runnable {
+                        val quality = getQuality(droppedItem)
+
+                        when (toolGroup) {
+                            ToolGroup.AXE -> {
+                                val damage = axeDamage(droppedItem.type)
+                                val speed = axeSpeed(droppedItem.type)
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ATTACK_DAMAGE, "QAxeDamage",
+                                        0.75 * damage + 1.25 * quality * damage, EquipmentSlot.HAND
+                                )
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ATTACK_SPEED, "QAxeSpeed",
+                                        speed, EquipmentSlot.HAND
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.SWORD -> {
+                                val damage = swordDamgage(droppedItem.type)
+                                val speed = swordSpeed(droppedItem.type)
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ATTACK_DAMAGE, "QSwordDamage",
+                                        0.75 * damage + 1.25 * quality * damage, EquipmentSlot.HAND
+                                )
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ATTACK_SPEED, "QSwordSpeed",
+                                        speed, EquipmentSlot.HAND
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.FISHING_ROD -> {
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_LUCK, "QFishingRodLuck",
+                                        -2 + 5 * quality, EquipmentSlot.HAND
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.HELMET -> {
+                                val armor = helmetArmor(droppedItem.type)
+                                if (droppedItem.type == Material.DIAMOND_HELMET){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QHelmetToughness",
+                                            2.0, EquipmentSlot.HEAD
+                                    )
+                                }
+                                else if (droppedItem.type == Material.NETHERITE_HELMET){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QHelmetToughness",
+                                            3.0, EquipmentSlot.HEAD
+                                    )
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_KNOCKBACK_RESISTANCE, "QHelmetResist",
+                                            1.0, EquipmentSlot.HEAD
+                                    )
+                                }
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ARMOR, "QHelmetArmor",
+                                        0.75 * armor + 1.25 * quality * armor, EquipmentSlot.HEAD
+
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.CHEST_PLATE -> {
+                                val armor = chestArmor(droppedItem.type)
+                                if (droppedItem.type == Material.DIAMOND_CHESTPLATE){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QChestToughness",
+                                            2.0, EquipmentSlot.CHEST
+                                    )
+                                }
+                                else if (droppedItem.type == Material.NETHERITE_CHESTPLATE){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QChestToughness",
+                                            3.0, EquipmentSlot.CHEST
+                                    )
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_KNOCKBACK_RESISTANCE, "QChestResist",
+                                            1.0, EquipmentSlot.CHEST
+                                    )
+                                }
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ARMOR, "QChestArmor",
+                                        0.75 * armor + 1.25 * quality * armor, EquipmentSlot.HEAD
+
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.LEGGINGS -> {
+                                val armor = leggingsArmor(droppedItem.type)
+                                if (droppedItem.type == Material.DIAMOND_LEGGINGS){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QLeggingsToughness",
+                                            2.0, EquipmentSlot.LEGS
+                                    )
+                                }
+                                else if (droppedItem.type == Material.NETHERITE_LEGGINGS){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QLeggingsToughness",
+                                            3.0, EquipmentSlot.LEGS
+                                    )
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_KNOCKBACK_RESISTANCE, "QLeggingsResist",
+                                            1.0, EquipmentSlot.LEGS
+                                    )
+                                }
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ARMOR, "QLeggingsArmor",
+                                        0.75 * armor + 1.25 * quality * armor, EquipmentSlot.LEGS
+
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            ToolGroup.BOOTS -> {
+                                val armor = bootsArmor(droppedItem.type)
+                                if (droppedItem.type == Material.DIAMOND_BOOTS){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QBootsToughness",
+                                            2.0, EquipmentSlot.FEET
+                                    )
+                                }
+                                else if (droppedItem.type == Material.NETHERITE_BOOTS){
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_ARMOR_TOUGHNESS, "QBootsToughness",
+                                            3.0, EquipmentSlot.FEET
+                                    )
+                                    addAttribute(
+                                            droppedItem, Attribute.GENERIC_KNOCKBACK_RESISTANCE, "QBootsResist",
+                                            1.0, EquipmentSlot.FEET
+                                    )
+                                }
+                                addAttribute(
+                                        droppedItem, Attribute.GENERIC_ARMOR, "QHelmetArmor",
+                                        0.75 * armor + 1.25 * quality * armor, EquipmentSlot.FEET
+
+                                )
+                                addSpecialty(droppedItem, false, specialty(SpecialtyTags.REFORMED))
+                            }
+                            else -> {}
+                        }
+                        enabledBlocks.remove(blockUnderPlayer)
+
+                        // 폭죽
+                        val finishEffect = FireworkEffect.builder().apply {
+                            trail(false)
+                            flicker(false)
+                            withColor(Color.GREEN, Color.LIME, Color.WHITE, Color.YELLOW)
+                            with(FireworkEffect.Type.BALL)
+
+                        }.build()
+                        dropWorld.playSound(dropLocation, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.6f, 1.0f)
+                        dropWorld.playFirework(itemDrop.location, finishEffect, 10.0)
+                        dropPlayer.sendActionBar("재가공 작업 완료!")
+                    } // 강철 품질 업
+            Bukkit.getScheduler().runTaskLater(plugin!!, finishForging, forgingTicks.toLong())
+            for (i in 1 until forgingTicks / 60) {
+                Bukkit.getScheduler().runTaskLater(plugin!!, forgingSpark, i * 60L) // 3초에 한 번씩 모루질 소리
+            }
+        } // 작업대 위에서 도구를 던졌을 때 → 재가공
     }
 
     @EventHandler
@@ -865,7 +1203,7 @@ class EventListener : Listener {
                 } // 모루 강화
 
                 Material.ENCHANTING_TABLE -> {
-                    reinforceTables(block, event.player, "DIAMOND") // 다이아몬드가 들어간 모든 재료로 강화 가능
+                    reinforceTables(block, event.player, "LAPIS_LAZULI") // 청금석으로 강화 가능
                 } // 인챈트 테이블 강화
 
                 Material.FURNACE -> {
@@ -879,6 +1217,22 @@ class EventListener : Listener {
                 Material.SMOKER -> {
                     reinforceTables(block, event.player, "COAL") // 석탄, 목탄, 석탄 블록 등으로 강화
                 } // 훈연기 강화
+
+                Material.TORCH -> {
+                    reinforceTables(block, event.player, "COAL") // 석탄, 목탄, 석탄 블록
+                } // 횃불 강화
+
+                Material.REDSTONE_TORCH -> {
+                    reinforceTables(block, event.player, "REDSTONE")
+                } // 레드스톤 횃불 강화
+
+                Material.CHEST -> {
+                    reinforceTables(block, event.player, "PLANKS")
+                } // 상자 강화
+
+                Material.BOOKSHELF -> {
+                    reinforceTables(block, event.player, "BOOK")
+                }
 
                 else -> {
                 }
@@ -925,10 +1279,27 @@ class EventListener : Listener {
         val base = GlobalObject.itemBreakBaseProbability
         val random = Random.nextDouble()
         if (random > (base + (1 - base) * quality)) {
-            event.player.world.playSound(event.player.location, Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f)
-            event.player.sendActionBar("${ChatColor.RED}아이템이 깨져 버렸다.")
-            event.player.inventory.setItem(hand, null)
-            event.isCancelled = true
+            var superSave = false
+            event.player.inventory.forEach {
+                if (it?.type == Material.CHEST) {
+                    val chestQuality = getQuality(it)
+                    val chestRandom = Random.nextDouble()
+                    if (chestRandom < chestQuality/2) { // Quality / 2의 확률로
+                        superSave = true
+                    }
+                }
+            }
+            if (!superSave) {
+                event.player.world.playSound(event.player.location, Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f)
+                event.player.sendActionBar("${ChatColor.RED}아이템이 깨져 버렸다.")
+                itemOnHand.amount -= 1
+                event.player.inventory.setItem(hand, itemOnHand.clone())
+                event.isCancelled = true
+            } else {
+                event.player.world.playSound(event.player.location, Sound.BLOCK_CHEST_LOCKED, 1.0f, 1.0f)
+                event.player.sendActionBar("${ChatColor.GREEN}상자 슈퍼 세이브")
+                event.player.world.spawnParticle(Particle.TOTEM, event.player.location, 15)
+            }
         }
     }
 
@@ -955,6 +1326,16 @@ class EventListener : Listener {
         if ((itemGroup == ItemGroup.INTERACTIVE_BLOCK) or (itemGroup == ItemGroup.UPGRADE_BLOCK)) {
             writeMarker(location, quality, maxQuality)
         }
+        else if (itemGroup == ItemGroup.TORCH) {
+            val breakTorch = Runnable {
+                block.breakNaturally()
+                location.getNearbyEntitiesByType(Item::class.java, 0.5).forEach{
+                    it.remove()
+                }
+            }
+            val burningTime = GlobalObject.torchBurningTicks + (quality * 24000).toLong()
+            Bukkit.getScheduler().runTaskLater(plugin!!, breakTorch, burningTime)
+        } // 횃불 꺼짐
     }
 
     @EventHandler

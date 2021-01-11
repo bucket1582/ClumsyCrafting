@@ -1,5 +1,6 @@
 package com.github.bucket1572.clumsycrafting
 
+import com.github.noonmaru.tap.util.updateFromGitHubMagically
 import net.md_5.bungee.api.ChatColor
 import org.bukkit.Material
 import org.bukkit.command.Command
@@ -13,14 +14,16 @@ object GlobalObject {
 
     // 확률
     const val flakeToolProbability: Double = 0.3 // 뗀석기 발견 확률
-    const val flakeBreakProbability: Double = 0.2 // 뗀석기 파괴 확률
+    const val flakeBreakProbability: Double = 0.15 // 뗀석기 파괴 확률
     const val cokesDropProbability: Double = 0.05 // 코크스 자연 채광 확률
     const val jewelBreakProbability: Double = 0.2 // 다이아몬드 원석 / 에메랄드 원석 파괴 확률
     const val reinForceBaseFailProbability: Double = 0.4 // 기본 강화 실패 확률
     const val reinForceBaseBreakProbability: Double = 0.22 // 기본 파괴 확률
     const val reinForceFailProbabilityDecrease: Double = 0.03 // 강화 실패 확률 감률
     const val reinForceBreakProbabilityDecrease: Double = 0.02 // 파괴 확률 감률
-    const val itemBreakBaseProbability: Double = 0.7 // 아이템이 기본적으로 파괴되지 않을 확률
+    const val handworkFailProbabilityDecrease: Double = 0.015 // 세공 실패 확률 감률
+    const val handworkBreakProbabilityDecrease: Double = 0.01 // 세공 파괴 확률 감률
+    const val itemBreakBaseProbability: Double = 0.9 // 아이템이 기본적으로 파괴되지 않을 확률
     const val sophisticatedCraftingProbability: Double = 0.1 // 정교함 태그가 붙을 확률
     const val bestSteelPickaxeJewelProbability: Double = 0.3 // 강철++ 곡괭이로 보석을 캤을 때 원석이 1개 추가로 나올 확률
 
@@ -54,6 +57,7 @@ object GlobalObject {
     const val durabilityCoefficient : Double = 0.8 // 품질에 따른 내구도의 하락비
     const val forgingTicks: Int = 600 // 단조 작업에 걸리는 시간
     const val reinforcingTicks: Int = 300 // 강화 작업에 걸리는 시간
+    const val torchBurningTicks: Int = 9600 // 기본 횃불 유지 시간
 
     init {
         // 선철
@@ -152,12 +156,9 @@ private class Commands : CommandExecutor {
                         )
                     }
                 } else if (args[0] == "update") {
-                    /*
                     plugin?.updateFromGitHubMagically(
                             "bucket1572", "ClumsyCrafting", "ClumsyCrafting.jar",
                             sender::sendMessage)
-                     */
-                    TODO("Not Yet Implemented")
                 } else {
                     sender.sendMessage("${ChatColor.RED}Invalid argument.")
                 }

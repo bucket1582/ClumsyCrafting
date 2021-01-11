@@ -20,8 +20,7 @@ fun getItemGroup(material: Material?): ItemGroup =
          */
         if (material?.isItem != true) {
             ItemGroup.ELSE
-        }
-        else if (getToolGroup(material) != ToolGroup.ELSE) {
+        } else if (getToolGroup(material) != ToolGroup.ELSE) {
             ItemGroup.TOOL
         } // 도구인지 판단
         else if (material.isBlock) { // 블록인지 판단
@@ -29,7 +28,8 @@ fun getItemGroup(material: Material?): ItemGroup =
                 (material == Material.TNT) or
                         (material.name.contains("BED")) or
                         (material == Material.RESPAWN_ANCHOR) or
-                        (material.name.contains("SIGN")) -> {
+                        (material.name.contains("SIGN") or
+                                (material.name.contains("DOOR"))) -> {
                     ItemGroup.SKIP
                 }
                 material.isInteractable -> { // 상호작용 가능한 블록
@@ -48,8 +48,7 @@ fun getItemGroup(material: Material?): ItemGroup =
                     ItemGroup.ELSE_BLOCK
                 }
             }
-        }
-        else {
+        } else {
             if (material.isEdible) {
                 ItemGroup.FOOD
             } else {

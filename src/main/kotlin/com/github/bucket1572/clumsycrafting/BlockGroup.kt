@@ -87,4 +87,8 @@ fun isAbleToReinforce(block: Block) : Boolean =
                 (block.type == Material.ENCHANTING_TABLE) or
                 (block.type == Material.FURNACE) or
                 (block.type == Material.BLAST_FURNACE) or
-                (block.type == Material.SMOKER)
+                (block.type == Material.SMOKER) or
+                (block.type == Material.TORCH) or
+                (block.type == Material.REDSTONE_TORCH) or
+                (block.type == Material.CHEST) or
+                (block.type == Material.BOOKSHELF)

@@ -9,7 +9,8 @@ enum class SpecialtyTags {
     ALL_STEEL, // 강철 태그
     CONTAINS_STEEL_PLUS, // 강철+ 태그
     BEST_STEEL, // 강철++ 태그
-    SOPHISTICATED // 정교함 태그
+    SOPHISTICATED, // 정교함 태그
+    REFORMED // 재가공 태그
 }
 
 fun specialtyToTag(tag: SpecialtyTags): String =
@@ -20,6 +21,7 @@ fun specialtyToTag(tag: SpecialtyTags): String =
             SpecialtyTags.CONTAINS_STEEL_PLUS -> "${ChatColor.YELLOW}강철+"
             SpecialtyTags.BEST_STEEL -> "${ChatColor.YELLOW}강철++"
             SpecialtyTags.SOPHISTICATED -> "${ChatColor.GREEN}정교함"
+            SpecialtyTags.REFORMED -> "${ChatColor.GRAY}재가공"
         } // 특수 태그
 
 fun getSpecialties(itemStack: ItemStack): List<String> =
