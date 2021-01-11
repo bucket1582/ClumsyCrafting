@@ -982,7 +982,7 @@ class EventListener : Listener {
                     (toolGroup == ToolGroup.SHOVEL) or
                     (toolGroup == ToolGroup.RANGED) or
                     (toolGroup == ToolGroup.PROTECT) or
-                    (!getSpecialties(droppedItem).contains(specialty(SpecialtyTags.REFORMED)))) return // 도구만 가능, 재가공 제품은 불가
+                    (getSpecialties(droppedItem).contains(specialty(SpecialtyTags.REFORMED)))) return // 도구만 가능, 재가공 제품은 불가
             canExplodeWhenReinforce(blockUnderPlayer, event.player)
 
             event.player.sendActionBar("재가공 시작")
