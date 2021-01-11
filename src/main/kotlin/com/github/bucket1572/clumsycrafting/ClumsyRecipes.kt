@@ -14,8 +14,7 @@ object ClumsyRecipes {
                 cokesBlastingRecipe(),
                 vanillaIronIngot(),
                 blastIronIngot(),
-                poorCastIronIngot(),
-                fineCastIronIngot(),
+                castIronIngot(),
                 steelIngot(),
                 steelConverter(),
                 steelConverter2(),
@@ -71,31 +70,16 @@ object ClumsyRecipes {
         )
     } // 선철 (용광로) 조합법
 
-    private fun poorCastIronIngot() : SmithingRecipe {
+    private fun castIronIngot() : ShapelessRecipe {
         val result = GlobalObject.poorCastIron.clone()
-        val mineral = GlobalObject.poorPigIron.clone()
+        val mineral = Material.IRON_INGOT
 
-        val addition = RecipeChoice.ExactChoice(mineral)
-        val base = RecipeChoice.MaterialChoice(Material.FLOWER_POT)
-
-        val namespaceKey = NamespacedKey(plugin!!, "poor_cast_ingot")
-        return SmithingRecipe(
-                namespaceKey, result, base, addition
-        )
+        val namespaceKey = NamespacedKey(plugin!!, "cast_ingot")
+        val recipe = ShapelessRecipe(namespaceKey, result)
+        recipe.addIngredient(mineral)
+        recipe.addIngredient(Material.FLOWER_POT)
+        return recipe
     } // 주철 (0/1) 조합법
-
-    private fun fineCastIronIngot() : SmithingRecipe {
-        val result = GlobalObject.fineCastIron.clone()
-        val mineral = GlobalObject.finePigIron.clone()
-
-        val addition = RecipeChoice.ExactChoice(mineral)
-        val base = RecipeChoice.MaterialChoice(Material.FLOWER_POT)
-
-        val namespaceKey = NamespacedKey(plugin!!, "fine_cast_ingot")
-        return SmithingRecipe(
-                namespaceKey, result, base, addition
-        )
-    } // 주철 (1/1) 조합법
 
     private fun steelIngot() : ShapelessRecipe {
         val result = GlobalObject.poorSteel.clone()
@@ -115,12 +99,10 @@ object ClumsyRecipes {
     private fun steelConverter() : ShapedRecipe {
         val result = ItemStack(Material.CAULDRON)
         applyDescription(result, GlobalObject.converterName, 0.0, 0)
-        val poorIngot = GlobalObject.poorCastIron.clone()
-        val fineIngot = GlobalObject.fineCastIron.clone()
 
         val namespaceKey = NamespacedKey(plugin!!, "steel_converter")
         val magma = RecipeChoice.MaterialChoice(Material.MAGMA_BLOCK, Material.MAGMA_CREAM)
-        val ironIngot = RecipeChoice.ExactChoice(poorIngot, fineIngot)
+        val ironIngot = Material.IRON_INGOT
         val recipe = ShapedRecipe(namespaceKey, result)
         recipe.apply {
             shape("C  ", "CMC", "CCC")
@@ -133,12 +115,10 @@ object ClumsyRecipes {
     private fun steelConverter2() : ShapedRecipe {
         val result = ItemStack(Material.CAULDRON)
         applyDescription(result, GlobalObject.converterName, 0.0, 0)
-        val poorIngot = GlobalObject.poorCastIron.clone()
-        val fineIngot = GlobalObject.fineCastIron.clone()
 
         val namespaceKey = NamespacedKey(plugin!!, "steel_converter_mirrored")
         val magma = RecipeChoice.MaterialChoice(Material.MAGMA_BLOCK, Material.MAGMA_CREAM)
-        val ironIngot = RecipeChoice.ExactChoice(poorIngot, fineIngot)
+        val ironIngot = Material.IRON_INGOT
         val recipe = ShapedRecipe(namespaceKey, result)
         recipe.apply {
             shape("  C", "CMC", "CCC")
