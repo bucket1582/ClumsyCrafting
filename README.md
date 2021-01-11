@@ -1,5 +1,6 @@
 Clumsy Crafting
 ===
+[![Build Status](https://api.travis-ci.com/Bucket1572/ClumsyCrafting.svg?branch=master)](https://travis-ci.com/github/Bucket1572/ClumsyCrafting)
 
 개요
 --
