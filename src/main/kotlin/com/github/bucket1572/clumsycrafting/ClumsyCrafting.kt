@@ -24,8 +24,9 @@ object GlobalObject {
     const val handworkFailProbabilityDecrease: Double = 0.015 // 세공 실패 확률 감률
     const val handworkBreakProbabilityDecrease: Double = 0.01 // 세공 파괴 확률 감률
     const val itemBreakBaseProbability: Double = 0.9 // 아이템이 기본적으로 파괴되지 않을 확률
-    const val sophisticatedCraftingProbability: Double = 0.1 // 정교함 태그가 붙을 확률
+    const val sophisticatedCraftingProbability: Double = 0.08 // 정교함 태그가 붙을 확률
     const val bestSteelPickaxeJewelProbability: Double = 0.3 // 강철++ 곡괭이로 보석을 캤을 때 원석이 1개 추가로 나올 확률
+    const val qualityDecreaseProbability: Double = 0.15 // 품질 하락 확률
 
     // 이름
     private val flakeName: String = "${ChatColor.WHITE}뗀석기"

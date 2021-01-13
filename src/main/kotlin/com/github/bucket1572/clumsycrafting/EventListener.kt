@@ -1295,12 +1295,23 @@ class EventListener : Listener {
         val hand = event.hand ?: return
         val itemOnHand = event.item ?: return
         val itemGroup: ItemGroup = getItemGroup(itemOnHand.type)
+        val quality = getQuality(itemOnHand)
+        val specialties = getSpecialties(itemOnHand)
+
+        if (specialties.contains(specialty(SpecialtyTags.SOPHISTICATED))) return // 정교한 도구는 품질이 하락하거나 깨지지 않음.
+
+        var random = Random.nextDouble()
+        if (random < GlobalObject.qualityDecreaseProbability) {
+            val maxQuality = getMaxQuality(itemOnHand)
+            val changedQuality = max(quality * maxQuality - 0.1, 0.0)
+            applyDescription(itemOnHand, changedQuality, maxQuality, specialties)
+            event.player.inventory.setItem(hand, itemOnHand.clone())
+        }
 
         if ((itemGroup == ItemGroup.TOOL) or (itemGroup == ItemGroup.FOOD)) return // 손에 들고 있는 아이템이 도구 혹은 음식인 경우, 깨지지 않음.
 
-        val quality = getQuality(itemOnHand)
         val base = GlobalObject.itemBreakBaseProbability
-        val random = Random.nextDouble()
+        random = Random.nextDouble()
         if (random > (base + (1 - base) * quality)) {
             var superSave = false
             event.player.inventory.forEach {
@@ -1323,7 +1334,7 @@ class EventListener : Listener {
                 event.player.sendActionBar("${ChatColor.GREEN}상자 슈퍼 세이브")
                 event.player.world.spawnParticle(Particle.TOTEM, event.player.location, 15)
             }
-        }
+        } // 아이템 깨짐
     }
 
     @EventHandler
